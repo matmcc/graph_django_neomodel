@@ -3,6 +3,7 @@ from rest_framework.urlpatterns import format_suffix_patterns
 
 from . import views
 
+app_name = 'graph_api'
 urlpatterns = [
     path('papers/', views.PaperList.as_view()),
     path('paper/<int:pk>/', views.PaperOne.as_view()),

@@ -30,5 +30,6 @@ from graph_api import views
 # ]
 
 urlpatterns = [
-    path('graph/', include('graph_api.urls')),
+    path('graph/', include('graph_api.urls', namespace='graph_api')),
+    path('viz/', include('graph_viz.urls', namespace='graph_viz')),
 ]

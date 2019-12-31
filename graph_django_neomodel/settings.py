@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_neomodel',
-    'graph_api',
+    'graph_api.apps.GraphApiConfig',
+    'graph_viz.apps.GraphVizConfig',
 ]
 
 MIDDLEWARE = [

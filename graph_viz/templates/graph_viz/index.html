@@ -1,0 +1,45 @@
+{% load static %}
+
+<head>
+    {% include 'graph_viz/imports.html' %}
+    <link rel="stylesheet" type="text/css" href="{% static 'graph_viz/style.css' %}">
+
+    <title>Graph Viz</title>
+</head>
+
+<body>
+
+    <div id="container">
+
+        <div id="graph-container"></div>
+
+          <div id="control-pane">
+            <h2 class="underline">filters</h2>
+
+            <div>
+              <h3>min degree <span id="min-degree-val">0</span></h3>
+              0 <input id="min-degree" type="range" min="0" max="0" value="0"> <span id="max-degree-value">0</span><br>
+            </div>
+
+            <div>
+              <h3>min year <span id="year-val">0</span></h3>
+              <span id="min-year-val">0</span> <input id="min-year" type="range" min="0" max="0" value="0"> <span id="max-year-val">0</span><br>
+            </div>
+
+            <span class="line"></span>
+
+            <div>
+              <button id="reset-btn">Reset filters</button>
+              <button id="export-btn">Export</button>
+            </div>
+
+            <div id="dump" class="hidden"></div>
+
+        </div>
+
+    </div>
+
+    <script src="{% static "graph_viz/js/app.js" %}"></script>
+
+</body>
+
