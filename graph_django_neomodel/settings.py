@@ -76,6 +76,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'graph_django_neomodel.wsgi.application'
 
+# Todo: sessions set to file/pickle to use set() - is this best?
+SESSION_ENGINE = 'django.contrib.sessions.backends.file'
+SESSION_SERIALIZER = 'django.contrib.sessions.serializers.PickleSerializer'
 
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
@@ -94,7 +97,12 @@ REST_FRAMEWORK = {
     # ],
     # Pagination settings
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 25
+    'PAGE_SIZE': 25,
+    # Renderers
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+        'rest_framework.renderers.BrowsableAPIRenderer',
+    ]
 }
 
 
@@ -135,3 +143,47 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+
+
+# Logging
+# https://docs.djangoproject.com/en/3.0/topics/logging/
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': '%(levelname)s %(message)s'
+        },
+        'verbose': {
+            'format': '%(levelname)s %(asctime)s %(module)s %(message)s'
+        }
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        'logfile': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(BASE_DIR, 'logs', 'debug.log'),
+            'maxBytes': 1024*1024*3,  # 3MB
+            'backupCount': 5,
+            'formatter': 'verbose'
+        },
+    },
+    'loggers': {
+        '__main__': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'logfile'],
+            'propagate': True
+        },
+        'graph_api': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'logfile'],
+            'propagate': True
+        },
+    },
+}

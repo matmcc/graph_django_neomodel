@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css">
+    <script defer src="https://use.fontawesome.com/releases/v5.3.1/js/all.js"></script>
+</head>
+
+<body>
+<div id="app">
+    <div class="container is-widescreen">
+
+    <div class="tile is-ancestor">
+        <div class="tile is-vertical">
+
+            <div class="tile is-parent">
+                <article class="tile is-child notification is-danger">
+                    <p class="title">Top tile</p>
+                </article>
+            </div>
+
+            <div class="tile">
+
+                <div class="tile is-parent is-10">
+                    <article class="tile is-child notification is-info">
+                        <p class="title">Left tile</p>
+
+                    </article>
+                </div>
+
+                <div class="tile is-parent is-vertical">
+                    <article class="tile is-child notification is-primary">
+                        <p class="title">Vertical...</p>
+                        <p class="subtitle">Top tile</p>
+                    </article>
+                    <article class="tile is-child notification is-warning">
+                        <p class="title">...tiles</p>
+                        <p class="subtitle">Bottom tile</p>
+                    </article>
+                </div>
+
+            </div>
+
+    </div>
+
+</div>
+
+
+    <script src="https://unpkg.com/vue"></script>
+    <!-- Full bundle -->
+    <script src="https://unpkg.com/buefy/dist/buefy.min.js"></script>
+
+    <!-- Individual components -->
+{#    <script src="https://unpkg.com/buefy/dist/components/table"></script>#}
+{#    <script src="https://unpkg.com/buefy/dist/components/input"></script>#}
+
+    <script>
+        new Vue({
+            el: '#app'
+        })
+    </script>
+</body>
+</html>

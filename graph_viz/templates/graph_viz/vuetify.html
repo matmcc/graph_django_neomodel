@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+{% load static %}
+
+<head>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+
+  {% include 'graph_viz/imports.html' %}
+
+  <link rel="stylesheet" type="text/css" href="{% static 'graph_viz/style.css' %}">
+
+</head>
+<body>
+  <div id="app">
+  <!-- App.vue -->
+  <v-app>
+
+    <v-app-bar app clipped-left dark>
+      <!-- -->
+      <v-app-bar-nav-icon @click.stop="drawer = !drawer" />
+{#      <v-toolbar-title>Application</v-toolbar-title>#}
+
+    </v-app-bar>
+
+    <v-navigation-drawer app clipped expand-on-hover
+            v-model="drawer">
+      <!-- -->
+      <v-list dense>
+        <v-list-item link>
+          <v-list-item-action>
+            <v-icon>mdi-home</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Home</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+        <v-list-item link>
+          <v-list-item-action>
+            <v-icon>mdi-contact-mail</v-icon>
+          </v-list-item-action>
+          <v-list-item-content>
+            <v-list-item-title>Contact</v-list-item-title>
+          </v-list-item-content>
+        </v-list-item>
+      </v-list>
+
+      <v-btn
+      color="blue"
+      dark
+      @click="sheet = !sheet"
+      >
+      Open v-model
+      </v-btn>
+
+    </v-navigation-drawer>
+
+
+
+    <!-- Sizes your content based upon application components -->
+    <v-content>
+
+      <!-- Provides the application the proper gutter -->
+      <v-container fluid>
+
+        <div id="graph-container">
+
+        </div>
+
+        <div id="control-pane">
+          <h2 class="underline">filters</h2>
+
+          <div>
+            <h3>min degree <span id="min-degree-val">0</span></h3>
+            0 <input id="min-degree" type="range" min="0" max="0" value="0"> <span id="max-degree-value">0</span><br>
+          </div>
+
+          <div>
+            <h3>min year <span id="year-val">0</span></h3>
+            <span id="min-year-val">0</span> <input id="min-year" type="range" min="0" max="0" value="0"> <span id="max-year-val">0</span><br>
+          </div>
+
+          <span class="line"></span>
+
+          <div>
+            <button id="reset-btn">Reset</button>
+            <button id="export-btn">Export</button>
+              <button id="toggle-layout">Stop layout</button>
+              <button id="FR">FR layout</button>
+          </div>
+
+          <div id="dump" class="hidden"></div>
+
+        </div>
+
+      </v-container>
+
+    </v-content>
+
+    <v-bottom-sheet
+            hide-overlay
+            inset
+            open-on-hover
+            v-model="sheet">
+
+      <v-sheet class="text-center" height="200px">
+        <v-btn
+          class="mt-6"
+          text
+          color="red"
+          @click="sheet = !sheet"
+        >close</v-btn>
+        <div class="py-3">This is a bottom sheet using the controlled by v-model instead of activator</div>
+      </v-sheet>
+
+    </v-bottom-sheet>
+
+    <v-footer app>
+      <!-- -->
+    </v-footer>
+
+  </v-app>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+  <script src="{% static "graph_viz/js/app.js" %}"></script>
+  <script>
+    new Vue({
+        delimiters: ['[[', ']]'],
+      el: '#app',
+      vuetify: new Vuetify(),
+        data: {
+            drawer: 'null',
+            sheet: false,
+            select: 'Programming',
+            items: [
+              'Programming',
+              'Design',
+              'Vue',
+              'Vuetify',
+            ],
+          },
+    })
+  </script>
+</body>
+</html>
+

@@ -11,6 +11,7 @@ from neomodel import (
 # Todo: changed from StructuredNode to DjangoNode to support ModelSerializer - but unsuccessful - change back?
 class Paper(StructuredNode):
     """Represents a Paper node in Neo4j"""
+    __name__ = 'Paper'
     Id = IntegerProperty(unique_index=True)
     CC = IntegerProperty()
     year = IntegerProperty()
@@ -20,6 +21,8 @@ class Paper(StructuredNode):
     name = StringProperty(index=True)
     DOI = StringProperty()
     prob = FloatProperty()
+    RC = IntegerProperty()
+    community = IntegerProperty()
 
     authors = RelationshipTo('.author.Author', 'HAS_AUTHOR')
     fields = RelationshipTo('.field.FieldOfStudy', 'HAS_FIELD')

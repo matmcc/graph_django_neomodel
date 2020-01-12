@@ -11,31 +11,53 @@
 
     <div id="container">
 
-        <div id="graph-container"></div>
+      <div id="graph-container"></div>
 
-          <div id="control-pane">
-            <h2 class="underline">filters</h2>
+      <div id="pane_wrapper" class="col-container">
 
-            <div>
+        <div id="details-pane" class="col_">
+          <h2 class="underline">details</h2>
+
+          <div id="details" class="flex-container">
+            <textarea id="details-text" rows="9" readonly></textarea>
+          </div>
+        </div>
+
+        <div id="control-pane" class="col_">
+          <h2 class="underline">filters</h2>
+
+          <div id="controls" class="flex-container">
+            <div id="controls-left" class="col-left">
+
               <h3>min degree <span id="min-degree-val">0</span></h3>
               0 <input id="min-degree" type="range" min="0" max="0" value="0"> <span id="max-degree-value">0</span><br>
-            </div>
 
-            <div>
               <h3>min year <span id="year-val">0</span></h3>
               <span id="min-year-val">0</span> <input id="min-year" type="range" min="0" max="0" value="0"> <span id="max-year-val">0</span><br>
+
+            </div>
+            {#              <span class="line"></span>#}
+
+            <div id="controls-right" class="col-right">
+
+              <div><button id="reset-btn">Reset</button></div>
+              <div><button id="export-btn">Export</button></div>
+              <div><button id="toggle-layout">Layout</button></div>
+              <div><button id="FR">FR layout</button></div>
+              <div>
+                <input type="checkbox" id="hide_edges" name="hide_edges">
+                <label for="hide_edges">Hide Edges</label>
+              </div>
+
             </div>
 
-            <span class="line"></span>
+          </div>
 
-            <div>
-              <button id="reset-btn">Reset filters</button>
-              <button id="export-btn">Export</button>
-            </div>
-
-            <div id="dump" class="hidden"></div>
+          <div id="dump" class="hidden"></div>
 
         </div>
+
+      </div>
 
     </div>
 

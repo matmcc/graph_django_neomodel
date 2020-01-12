@@ -153,8 +153,8 @@ class Mag_Api:
             r = r.json()['entities']
             response.extend(r)
 
-        if len(response) == 1:
-            response = response[0]
+        # if len(response) == 1:
+        #     response = response[0]
 
         return response
 
@@ -191,7 +191,7 @@ class Mag_Api:
             else:
                 return NotImplementedError
         elif isinstance(query, int):
-            return self.evaluate(f'Id={query}', attribs=self.ATTRIBS)
+            return self.evaluate(f'Id={query}', attribs=self.ATTRIBS)[0]
         else:
             return None
 

@@ -10,18 +10,62 @@ body {
       right: 0;
       position: absolute;
     }
+    #details-pane {
+      top: 10px;
+      left: 10px;
+      /*right: 10px;*/
+      position: absolute;
+      width: 65%;
+      background-color: rgb(249, 247, 237);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    #details-pane > div {
+      margin: 5px;
+      overflow-x: auto;
+    }
+    #details {
+        display: flex;
+        flex: 1;
+    }
+    #details > textarea {
+        height: 100%;
+        width: 100%;
+        margin: auto;
+        resize: none;
+    }
     #control-pane {
       top: 10px;
       /*bottom: 10px;*/
       right: 10px;
       position: absolute;
-      width: 230px;
+      width: 33%;
       background-color: rgb(249, 247, 237);
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+
     }
     #control-pane > div {
-      margin: 10px;
+      margin: 5px;
       overflow-x: auto;
+    }
+    .flex-container {
+        display: flex;
+    }
+    .col-container {
+        display: table;
+        width: 100%;
+    }
+    .col_ {
+        display: table-cell;
+    }
+    .col-left {
+        flex: 67%;
+        width: 100%;
+        align-content: center;
+    }
+    .col-right {
+        flex: 33%;
+        align-content: center;
+        align-items: flex-end;
     }
     .line {
       clear: both;
@@ -53,5 +97,5 @@ body {
     }
 
     input[type=range] {
-      width: 145px;
+      width: 50%;
     }

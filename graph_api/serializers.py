@@ -11,16 +11,18 @@ class PaperSerializer(serializers.BaseSerializer):
         return {
             'id': instance.Id,
             'cc': instance.CC,
+            'rc': instance.RC,
             'year': instance.year,
             'abstract': instance.abstract,
-            # 'source': instance.source,
+            'source': instance.source,
             'title': instance.name,
             'label': instance.label,
             'doi': instance.DOI,
-            'authors': [AuthorSerializer(author).data for author in instance.authors.all()],
-            'fields': [FieldOfStudySerializer(field).data for field in instance.fields.all()],
-            'references': [paper.id for paper in instance.references.all()],
-            'citations': [paper.id for paper in instance.cited_by.all()],
+            'probability': instance.prob,
+            'authors': AuthorSerializer([author for author in instance.authors.all()], many=True).data,
+            'fields': FieldOfStudySerializer([field for field in instance.fields.all()], many=True).data,
+            'references': [paper.Id for paper in instance.references.all()],
+            'citations': [paper.Id for paper in instance.cited_by.all()],
         }
 
 
@@ -109,3 +111,28 @@ class ObjectSerializer(serializers.BaseSerializer):
                 # Force anything else to its string representation.
                 output[attribute_name] = str(attribute)
         return output
+
+
+# Sigma Serializers
+class SigmaPaperSerializer(serializers.BaseSerializer):
+    """
+    Read-only serializer for Paper neomodel node
+    """
+    def to_representation(self, instance):
+        return {
+            'id': instance.Id,
+            'cc': instance.CC,
+            'rc': instance.RC,
+            'year': instance.year,
+            'abstract': instance.abstract,
+            'source': instance.source,
+            'title': instance.name,
+            'label': instance.label,
+            'doi': instance.DOI,
+            'prob': instance.prob,
+            'community': instance.community,
+            'authors': [a['label'] for a in AuthorSerializer([author for author in instance.authors.all()], many=True).data],
+            'fields': [f['label'] for f in FieldOfStudySerializer([field for field in instance.fields.all()], many=True).data],
+            'references': [paper.Id for paper in instance.references.all()],
+            'citations': [paper.Id for paper in instance.cited_by.all()],
+        }

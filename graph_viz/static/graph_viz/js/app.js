@@ -1,5 +1,6 @@
 "use strict";
 /*jshint esversion: 8 */
+
 /**
  * DOM utility function
  */
@@ -43,7 +44,7 @@ let _ = {
   },
 
   toggle: function (selectors, cssClass) {
-    let cssClass = cssClass || "hidden";
+    var cssClass = cssClass || "hidden";
     let nodes = document.querySelectorAll(selectors);
     let l = nodes.length;
     for ( i = 0 ; i < l; i++ ) {
@@ -64,10 +65,10 @@ let _ = {
   */
 let node_test = {
   "_id":"5dbee93263c611215bca250e",
-  "id":"2154216473",
+  "id":2157025439,
   "label":"collaborative web search who what where when and why",
-  "x":-4.149263352155685,
-  "y":-4.927542060613632,
+  "x":50,
+  "y":50,
   "size":1,
   "author":[{"AuN":"meredith ringel morris"},{"AuN":"jaime teevan"}],
   "year":2009,
@@ -79,7 +80,8 @@ let node_test = {
   "_etag":"be710b53f9200a2e237ffbc6d9eed28dd84fa1e7"};
 node_test.color = '#137';
 
-// init letiables
+// init variables
+let API_endpoint = 'http://localhost:8000/graph/sigma/paper/related/';
 let filter;
 let g = { nodes: [], edges: [] };
 g.nodes.push(node_test);
@@ -93,8 +95,12 @@ let Palette = {
     YlGn: sigma.plugins.colorbrewer.YlGn,
     YlGnBu: sigma.plugins.colorbrewer.YlGnBu,
     YlOrRd: sigma.plugins.colorbrewer.YlOrRd,
+    YlOrBr: sigma.plugins.colorbrewer.YlOrBr,
     RdYlBu: sigma.plugins.colorbrewer.RdYlBu,
+    Greys: sigma.plugins.colorbrewer.Greys,
+    Greens: sigma.plugins.colorbrewer.Greens,
     Spectral: sigma.plugins.colorbrewer.Spectral,
+    Paired: sigma.plugins.colorbrewer.Paired,
   },
   sequentialBlue: {
     7: ['#132b43','#1d3f5d','#27547a','#326896','#3d7fb5','#4897d4','#54aef3']
@@ -111,13 +117,13 @@ let Styles = {
     //   format: function (value) { return '#' + value; }
     // },
     size: {
-      by: 'logprob',
-      bins: 7,
-      min: 1,
-      max: 25,
+      by: 'prob',
+      bins: 5,
+      min: 3,
+      max: 13,
     },
     color: {
-      by: 'logprob',
+      by: 'prob',
       scheme: 'sequentialBlue',
       bins: 7,
     },
@@ -127,24 +133,41 @@ let Styles = {
     // },
   },
   edges: {
+    color: {
+      by: 'weight',
+      scheme: 'cb.YlGn',
+      bins: 5
+    },
+    // size: {
+    //   by: 'source',
+    //   bins: 7,
+    //   min: 1,
+    //   max: 5
+    // },
+
 
   }
 };
 
 
 // Add methods to sigma:
-  // Add a method to the graph model that returns an
-  // object with every neighbors of a node inside:
-// sigma.classes.graph.addMethod('neighbors', function(nodeId) {
-//   let k,
-//           neighbors = {},
-//           index = this.allNeighborsIndex[nodeId] || {};
-//
-//   for (k in index)
-//     neighbors[k] = this.nodesIndex[k];
-//
-//   return neighbors;
-// });
+//   Add a method to the graph model that updates the graph
+//   ignoring node already present (cf. throw Error):
+sigma.classes.graph.addMethod('updateSkipDuplicateNodes', function(g) {
+
+  for (let node of g.nodes) {
+    if (!(this.nodesIndex.get(node.id))) {
+       this.addNode(node);}
+  }
+
+  for (let edge of g.edges) {
+    if (!(this.edgesIndex.get(edge.id))) {
+      this.addEdge(edge);
+    }
+  }
+
+  return this;
+});
 
 
 /**
@@ -172,9 +195,18 @@ let settings = {
   zoomMin: 0.001,
   zoomMax: 3,
 
+  nodeHaloColor: '#ffc021',
+  edgeHaloColor: '#f0f061',
+  nodeHaloSize: 6,
+  edgeHaloSize: 2,
+
+  // enableEdgeHovering: true,  // canvas renderer only
+  // edgeHoverPrecision: 5,
   shortLabelsOnHover: true,    // enable the short label display mode
   // spriteSheetResolution: 2048, // resolution of the sprite sheet square
   // spriteSheetMaxSprites: 8     // number max of sprites
+
+  animationsTime: 500,
 };
 
 // init sigma
@@ -188,7 +220,7 @@ let s = new sigma({
 });
 
 // init design plugin:
-design = sigma.plugins.design(s, {
+let design = sigma.plugins.design(s, {
   styles: Styles,
   palette: Palette
 });
@@ -282,6 +314,23 @@ function getEdges(data) {
   });
 }
 
+function getData(data) {
+  return new Promise( function (resolve, reject) {
+    try {
+      resolve(fetchJs(data));
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+async function fetchJs(node_id) {
+  const URL = API_endpoint + node_id;
+  const response = await fetch(URL);
+  const result = await response.json();
+  return await result;
+}
+
 function updateGraph_(s, data) {
   // Calls API to return neighbouring nodes and edges, then updates graph.
   let update = {
@@ -291,37 +340,46 @@ function updateGraph_(s, data) {
 
   // Wait until getNodes and getEdges complete
   Promise.all([
-    getNodes(data).then(values =>
-      {
-        values.forEach( (n) => {
-        if (!s.graph.nodes(n['id'])) {
-          update.nodes.push(n);}
-        });
-      }),
-    getEdges(data).then(values =>
-      {
-        values.forEach( (e) => {
-          if (!s.graph.edges(e['id'])) {
-            update.edges.push(e);}
-        });
-      }),
+    getData(data.id).then(values => {
+      update = values;
+    })
+      // getNodes(data).then(values =>
+    //   {
+    //     values.forEach( (n) => {
+    //     if (!s.graph.nodes(n['id'])) {
+    //       update.nodes.push(n);}
+    //     });
+    //   }),
+    // getEdges(data).then(values =>
+    //   {
+    //     values.forEach( (e) => {
+    //       if (!s.graph.edges(e['id'])) {
+    //         update.edges.push(e);}
+    //     });
+    //   }),
   ]).then(values => {
+    console.log(update);
     // then update graph
-    s.graph.read(update);
+    s.graph.updateSkipDuplicateNodes(update);
     // re-apply design
     design.deprecate();
     design.apply();
+    }).then(()=>{
     // update activeState
     activeState.dropNodes();
     activeState.dropEdges();
     activeState.addNodes(data.id);
     activeState.addEdges(s.graph.adjacentEdges(data.id).map(i => i.id));
+      }
+  ).then(()=>{
     // refresh graph
     s.refresh();
     updatePane(s.graph, filter);
   }).then(() => {
     let neighbours = s.graph.adjacentNodes(data.id);
-    locate.nodes(neighbours.map(n => n.id));
+    // console.log(neighbours.length);
+    // if() to avoid zooming straight in which disorients.
+    if (neighbours.length > 1) {locate.nodes(neighbours.map(n => n.id));}
   });
 }
 
@@ -405,6 +463,136 @@ function applyMinYearFilter(e) {
           .apply();
 }
 
+function applyHideEdgesFilter(e) {
+  if (e.target.checked) {
+    filter.undo('hide-edges')
+        .edgesBy(function(e) {
+              return activeState.edges().includes(e);
+            },
+            'hide-edges' )
+        .apply();
+  } else {
+    filter.undo('hide-edges').apply();
+  }
+
+}
+
+// Return array of unique values
+// see: https://stackoverflow.com/questions/1960473
+function arrayUnique(array) {
+  return [...new Set(array)];
+}
+
+// Details pane
+// Create <div> with node details
+function addDiv(node) {
+  let el = _.$('details');
+  while (el.firstChild) { el.removeChild(el.firstChild)}
+
+  const div = document.createElement('div');
+  // div.classname = "";
+  div.innerHTML = `
+  <h3>${node.label}</h3>
+  <p>
+  <b>Authors:</b> ${node.authors}, 
+  <b>Year:</b> ${node.year}, 
+  <b>Reference count:</b> ${node.references.length}, 
+  <b>Citation count:</b> ${node.citations.length} - 
+  <a href="${node.source}">Source</a> - 
+  <a href="https://doi.org/${node.doi}">DOI</a>
+  </p>
+  <p><b>Abstract:</b> ${node.abstract}</p>
+  `;
+  // Note - not checking typeof node.citations !== 'undefined' will error, same for refs - fix in js framework?
+  _.$('details').appendChild(div);
+}
+
+
+// Halo
+s.bind('hovers', function(e) {
+  // console.log(e.data.captor, e.data);
+  if (e.data.enter.nodes.length > 0) {
+    // _.$('details-text').textContent = JSON.stringify(e.data.enter.nodes[0]);
+    addDiv(e.data.enter.nodes[0]);
+  }
+
+  var adjacentNodes = [],
+      adjacentEdges = [];
+
+  if (!e.data.enter.nodes.length) return;
+
+  // Get adjacent nodes:
+  e.data.enter.nodes.forEach(function(node) {
+    adjacentNodes = adjacentNodes.concat(s.graph.adjacentNodes(node.id));
+  });
+
+  // Add hovered nodes to the array and remove duplicates:
+  adjacentNodes = arrayUnique(adjacentNodes.concat(e.data.enter.nodes));
+
+  // Get adjacent edges:
+  e.data.enter.nodes.forEach(function(node) {
+    adjacentEdges = adjacentEdges.concat(s.graph.adjacentEdges(node.id));
+  });
+
+  // Remove duplicates:
+  adjacentEdges = arrayUnique(adjacentEdges);
+
+  // Render halo:
+  s.renderers[0].halo({
+    nodes: adjacentNodes,
+    edges: adjacentEdges
+  });
+});
+
+s.renderers[0].bind('render', function(e) {
+  s.renderers[0].halo();
+});
+
+// Configure the ForceLink algorithm:
+var fa = sigma.layouts.configForceLink(s, {
+  edgeWeightInfluence: 1,
+  linLogMode: true, //  emphasize clusters (and outliers)
+  // randomize: 'globally',
+  // seems to crash browser if true and randomize not set to globally
+  // (but should speed up large graph layout)
+  // barnesHutOptimize: true,
+  // barnesHutTheta: 1.2,
+  // strongGravityMode: true,
+  worker: true,
+  autoStop: true,
+  avgDistanceThreshold: 0.05,
+  background: true,
+  easing: 'cubicInOut'
+});
+
+fa.bind('start stop', function (event) {
+  console.log(event.type);
+  if (event.type === 'stop') {
+    document.getElementById('toggle-layout').innerHTML = 'Start layout';
+  }
+});
+
+document.getElementById('toggle-layout').addEventListener('click', function() {
+  if ((s.supervisor || {}).running) {
+    sigma.layouts.killForceLink();
+    document.getElementById('toggle-layout').innerHTML = 'Start layout';
+  } else {
+    sigma.layouts.startForceLink({worker: true});
+    document.getElementById('toggle-layout').innerHTML = 'Stop layout';
+  }
+});
+
+// Configure the Fruchterman-Reingold algorithm:
+var frListener = sigma.layouts.fruchtermanReingold.configure(s, {
+  iterations: 500,
+  easing: 'quadraticInOut',
+  duration: 800
+});
+
+_.$('FR').addEventListener("click", function(e) {
+  sigma.layouts.fruchtermanReingold.start(s);
+});
+
 /**
  * Bind events
   */
@@ -414,6 +602,7 @@ s.bind('clickNode', function(e) {
     locate.center(locate_settings.zoomDef);
   } else {
     // TODO: this may call API for node which has previously been called - fix.
+    // console.log(e.data.node);
     updateGraph_(s, e.data.node);
   }
 });
@@ -425,6 +614,7 @@ s.bind('rightClickStage', function() {
 // TODO: These are not bound together - therefore one does not update as another is used - intended?
 _.$('min-degree').addEventListener("input", applyMinDegreeFilter);
 _.$('min-year').addEventListener("input", applyMinYearFilter);
+_.$('hide_edges').addEventListener("change", applyHideEdgesFilter);
 
 // s.bind('clickEdge doubleClickEdge rightClickEdge', function(e) {
 //   console.log(e.type, e.data.edge, e.data.captor);

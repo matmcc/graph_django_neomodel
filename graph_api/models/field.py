@@ -11,6 +11,7 @@ from neomodel import (
 
 class FieldOfStudy(StructuredNode):
     """Represents an Author node in Neo4j"""
+    __name__ = "FieldOfStudy"
     Id = IntegerProperty(index=True)
     label = StringProperty()
     name = StringProperty(index=True)

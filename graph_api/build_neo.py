@@ -1,10 +1,16 @@
+import pickle
+import logging
+
 from graph_api.models import Paper, Author, FieldOfStudy
 from mag.Mag import Mag_Api, build_abstract
 from decorators import timing
+
 from neomodel import config, db
 
 
-# config.DATABASE_URL = 'bolt://neo4j:password@localhost:7687'
+config.DATABASE_URL = 'bolt://neo4j:password@localhost:7687'
+logger = logging.getLogger(__name__)
+
 
 
 #  Mag util functions
@@ -24,111 +30,24 @@ m = Mag_Api()
 seed = 2157025439
 
 
-# Build db
-# @timing
-def add_mag_paper_to_graph_db(paper_from_Mag):
-    """Adds a MAG paper to db via neomodel ogm.
-        Adds refs only if paper exists in graph"""
-
-    # Todo: Too Slow! Try cypher instead
-
-    # if paper already exists, skip
-    if Paper.nodes.get_or_none(Ti=paper_from_Mag['Ti']):
-        # print(paper_from_Mag)
-        return
-
-    # fix abstract and get first source link
-    if paper_from_Mag.get('IA', None):
-        paper_from_Mag['Ab'] = build_abstract(paper_from_Mag.pop('IA'))
-    if paper_from_Mag.get('S', None):
-        paper_from_Mag['S'] = paper_from_Mag.pop('S')[0]['U']
-    paper_from_Mag.pop('prob', None)
-
-    fields = paper_from_Mag.pop('F', None)
-    authors = paper_from_Mag.pop('AA', None)
-    references = paper_from_Mag.pop('RId', None)
-
-    paper = Paper(**paper_from_Mag).save()
-
-    for f in fields:
-        field = FieldOfStudy(**f)
-        field_already_exists = field.nodes.get_or_none(FN=field.FN)
-        if field_already_exists:
-            paper.fields.connect(field_already_exists)
-        else:
-            field.save()
-            paper.fields.connect(field)
-    for a in authors:
-        author = Author(**a)
-        author_already_exists = author.nodes.get_or_none(AuN=author.AuN)
-        if author_already_exists:
-            paper.authors.connect(author_already_exists)
-        else:
-            author.save()
-            paper.authors.connect(author)
-    if references:
-        for ref in references:
-            reference_exists = paper.nodes.get_or_none(Id=ref)
-            if reference_exists:
-                paper.references.connect(reference_exists)
-
-    paper.save()
-
-
-query = """
-     MERGE (paper:Paper { id: {Id} }) ON CREATE
-           SET paper += { cc: {CC}, year: {Y}, abstract: {Ab}, label: {DN},
-                         source: {S}, title: {Ti}, doi: {DOI}, prob: {logprob} } 
-       WITH paper
-       UNWIND {F} AS field
-           MERGE (f:FieldOfStudy { name: field.FN }) ON CREATE
-               SET f.id = field.FId, f.label = field.DFN
-           MERGE (paper)-[:HAS_FIELD]->(f)
-       WITH paper
-       UNWIND {AA} AS author
-           MERGE (a:Author { name: author.AuN }) ON CREATE
-               SET a.id = author.AuId, a.label = author.DAuN
-           MERGE (paper)-[:HAS_AUTHOR]->(a)
-"""
-query2 = """
-     CREATE (paper:Paper)
-     WITH paper
-       UNWIND paper.F AS field
-           MERGE (f:FieldOfStudy { name: field.FN }) ON CREATE
-               SET f.id = field.FId, f.label = field.DFN
-           MERGE (paper)-[:HAS_FIELD]->(f)
-       WITH paper
-       UNWIND paper.AA AS author
-           MERGE (a:Author { name: author.AuN }) ON CREATE
-               SET a.id = author.AuId, a.label = author.DAuN
-           MERGE (paper)-[:HAS_AUTHOR]->(a)
-    RETURN paper
-"""
-queryApoc = """
-         CALL apoc.create.node(['Paper'], {params}) YIELD node AS paper
-         UNWIND paper.F AS field
-         MERGE (f:FieldOfStudy { name: field.FN }) ON CREATE
-         SET f.id = field.FId, f.label = field.DFN
-         MERGE (paper)-[:HAS_FIELD]->(f)
-         WITH paper
-         UNWIND paper.AA AS author
-         MERGE (a:Author { name: author.AuN }) ON CREATE
-         SET a.id = author.AuId, a.label = author.DAuN
-         MERGE (paper)-[:HAS_AUTHOR]->(a)
-         """
-
-
 def clean_paper_from_mag(paper_from_Mag):
     if paper_from_Mag.get('IA', None):
         paper_from_Mag['Ab'] = build_abstract(paper_from_Mag.pop('IA'))
     if paper_from_Mag.get('S', None):
-        paper_from_Mag['S'] = paper_from_Mag.pop('S')[0]['U']
+        # if len(paper_from_Mag['S']) > 1:
+        try:
+            paper_from_Mag['S'] = paper_from_Mag['S'][0]['U']
+        except (TypeError, IndexError, KeyError) as e:
+            print(paper_from_Mag)
+            print(e)
     paper_from_Mag.pop('Pr', None)
+    paper_from_Mag['RC'] = len(paper_from_Mag.get('RId', ''))
     return paper_from_Mag
 
 
 @timing
 def add_paper_by_cypher(query, params):
+    params = [clean_paper_from_mag(p) for p in params]
     results, meta = db.cypher_query(query, {'batch': params})
     return results, meta
 
@@ -136,7 +55,7 @@ def add_paper_by_cypher(query, params):
 add_papers = """
 UNWIND {batch} as row
 MERGE (p:Paper {name:row.Ti}) ON CREATE
-SET p += {CC:row.CC, year:row.Y, abstract:row.Ab, label:row.DN, Id:row.Id, DOI:row.DOI, prob:row.logprob}
+SET p += {CC:row.CC, RC:row.RC, year:row.Y, abstract:row.Ab, source:row.S, label:row.DN, Id:row.Id, DOI:row.DOI, prob:row.logprob}
 WITH p, row
 UNWIND row.F AS field
 MERGE (f:FieldOfStudy { name: field.FN }) ON CREATE
@@ -170,6 +89,24 @@ MATCH (s:Paper {Id:sId})
 MERGE (s)-[:CITES]->(t)
 """
 
+add_refs_batch = """
+UNWIND {batch} AS row
+MATCH (s:Paper {Id:row.source})
+WITH s, row
+UNWIND row.target AS tId
+MATCH (t:Paper {Id:tId})
+MERGE (s)-[:CITES]->(t)
+"""
+
+add_cits_batch = """
+UNWIND {batch} as row
+MATCH (t:Paper {Id:row.target})
+WITH t, row
+UNWIND row.source AS sId
+MATCH (s:Paper {Id:sId})
+MERGE (s)-[:CITES]->(t)
+"""
+
 
 @timing
 def on_click():
@@ -194,5 +131,165 @@ def on_click():
     cit_ids = [n['Id'] for n in hop['cits']]
     db.cypher_query(add_cits, {'source': cit_ids, 'target': p['Id']})
 
+    papers = hop['refs'] + hop['cits']
+    new_papers = expand(papers)
+    return new_papers
 
-on_click()
+
+@timing
+def expand(set_of_papers):
+    l_refs = []
+    l_cits = []
+    papers = []
+    for p in set_of_papers:
+        # print(p)
+        # print('getting refs')
+        refs = m.get_refs(p)
+        # print('getting cits')
+        cits = m.get_cits(p)
+        try:
+            cits_ids = [c['Id'] for c in cits]
+        except TypeError as e:
+            try:
+                cits_ids = cits['Id']
+            except (TypeError, IndexError) as e:
+                cits_ids = None
+                print(e)
+                print(cits)
+            # for c in cits:
+            #     if type(c) == type(''):
+            #         print(c)
+        papers += refs
+        papers += cits
+        if 'RId' in p:
+            l_refs.append({'source': p['Id'], 'target': p['RId']})
+        if p['CC'] > 0:
+            try:
+                l_cits.append({'source': cits_ids, 'target': p['Id']})
+            except TypeError as e:
+                print(e)
+                print(p)
+
+    print('add papers')
+    add_paper_by_cypher(add_papers, papers)
+    print('add refs')
+    db.cypher_query(add_refs_batch, {'batch': l_refs})
+    print('adding cits')
+    db.cypher_query(add_cits_batch, {'batch': l_cits})
+    return papers
+
+# papers = on_click()
+
+# p = get_one_paper(m, seed)
+# print('add to db')
+# # add_mag_paper_to_graph_db(p)
+# add_paper_by_cypher(add_papers, [p])
+# p2 = expand([p])
+# p3 = expand(p2)
+
+
+def expand_mag(papers):
+    d = {}
+    # d['errors'] = []
+    ps = []
+    for p in papers:
+        try:
+            i = p['Id']
+            refs = m.get_refs(p)
+            cits = m.get_cits(p)
+            if isinstance(refs, dict):
+                refs = [refs]
+            if isinstance(cits, dict):
+                cits = [cits]
+            t = {'refs': refs, 'cits': cits}
+            d[i] = t
+            ps += refs
+            ps += cits
+        except TypeError:
+            d['errors'] += p
+    return d, ps
+
+
+_PAPERS = {}
+_REFS = {}
+_CITS = {}
+_EXPANDED = {}
+
+
+@timing
+def expand_2(papers, tuple_papers_refs_cits=(_PAPERS, _REFS, _CITS, _EXPANDED)):
+    _p = _PAPERS
+    _r = _REFS
+    _c = _CITS
+    _done = _EXPANDED
+    for paper in papers:
+        # If already called, skip
+        if _done.get(paper['Id'], False):
+            continue
+        # if not in paper dict add to paper dict
+        if paper['Id'] not in _p:
+            _p[paper['Id']] = paper
+        # if Refs...
+        if 'RId' in paper and isinstance(paper['RId'], list):
+            refs = m.get_refs(paper)  # get refs
+            # ensure refs is a list
+            if isinstance(refs, dict):
+                refs = [refs]
+
+            _r[paper['Id']] = paper['RId']  # add ref list
+            # add referenced papers
+            for r in refs:
+                _p[r['Id']] = r
+
+        # if citations ...
+        if 'CC' in paper and paper['CC'] > 0:
+            cits = m.get_cits(paper)
+            if isinstance(cits, dict):
+                cits = [cits]
+            cit_ids = []
+
+            # add citing papers
+            for c in cits:
+                _p[c['Id']] = c
+                cit_ids.append(c['Id'])
+            # add cit list
+            _c[paper['Id']] = cit_ids
+
+        # add to _done
+        _done[paper['Id']] = True
+
+
+
+# p1 = get_one_paper(m, seed)
+# p2, ps = expand_mag([p1])
+# p3, ps = expand_mag(ps)
+
+# shells = {'1': p1, '2': p2, '3': p3}
+# with open('mag_dict_123.pickle', 'wb') as f:
+#     pickle.dump(shells, f, protocol=pickle.HIGHEST_PROTOCOL)
+# print('done')
+
+# p1 = get_one_paper(m, seed)
+# expand_2([p1])
+# expand_2(list(_PAPERS.values()))
+#
+# with open('mag.pickle', 'wb') as f:
+#     pickle.dump({'_PAPERS': _PAPERS, '_REFS': _REFS, '_CITS': _CITS, '_EXPANDED': _EXPANDED}, f, protocol=pickle.HIGHEST_PROTOCOL)
+# print('done')
+
+d = pickle.load(open('mag.pickle', 'rb'))
+_P = d['_PAPERS']
+_R = d['_REFS']
+_C = d['_CITS']
+_E = d['_EXPANDED']
+
+for p in _E:
+    if _E[p]:
+        _P.pop(p, None)
+
+expand_2(list(_P.values()))
+
+with open('mag_hop4.pickle', 'wb') as f:
+    pickle.dump({'_PAPERS': _PAPERS, '_REFS': _REFS, '_CITS': _CITS, '_EXPANDED': _EXPANDED}, f, protocol=pickle.HIGHEST_PROTOCOL)
+print('done')
+

@@ -10,6 +10,7 @@ from neomodel import (
 
 class Author(StructuredNode):
     """Represents an Author node in Neo4j"""
+    __name__ = 'Author'
     Id = IntegerProperty(index=True)
     label = StringProperty()
     name = StringProperty(index=True)
