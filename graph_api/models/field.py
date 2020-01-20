@@ -12,15 +12,17 @@ from neomodel import (
 class FieldOfStudy(StructuredNode):
     """Represents an Author node in Neo4j"""
     __name__ = "FieldOfStudy"
-    Id = IntegerProperty(index=True)
-    label = StringProperty()
+
+    FieldOfStudyId = IntegerProperty(index=True)
+    Rank = IntegerProperty()
     name = StringProperty(index=True)
-    # FId = IntegerProperty(index=True)
-    # id = AliasProperty(to='FId')
-    # DFN = StringProperty()
-    # label = AliasProperty(to='DFN')
-    # FN = StringProperty(index=True)
-    # name = AliasProperty(to='FN')
+    label = StringProperty()
+    MainType = StringProperty()
+    Level = IntegerProperty()
+    PaperCount = IntegerProperty()
+    CitationCount = IntegerProperty()
+
+    Id = AliasProperty(to='FieldOfStudyId')
 
     papers = RelationshipFrom('.paper.Paper', 'HAS_FIELD')
     child = RelationshipTo('.field.FieldOfStudy', 'HAS_CHILD')

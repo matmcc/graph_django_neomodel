@@ -9,7 +9,7 @@ class PaperSerializer(serializers.BaseSerializer):
     def to_representation(self, instance):
         # Todo: refs and cits will not return correct numbers when called from another serializer
         return {
-            'id': instance.Id,
+            'id': instance.PaperId,
             'cc': instance.CC,
             'rc': instance.RC,
             'year': instance.year,
@@ -21,8 +21,8 @@ class PaperSerializer(serializers.BaseSerializer):
             'probability': instance.prob,
             'authors': AuthorSerializer([author for author in instance.authors.all()], many=True).data,
             'fields': FieldOfStudySerializer([field for field in instance.fields.all()], many=True).data,
-            'references': [paper.Id for paper in instance.references.all()],
-            'citations': [paper.Id for paper in instance.cited_by.all()],
+            'references': [paper.PaperId for paper in instance.references.all()],
+            'citations': [paper.PaperId for paper in instance.cited_by.all()],
         }
 
 
@@ -120,19 +120,20 @@ class SigmaPaperSerializer(serializers.BaseSerializer):
     """
     def to_representation(self, instance):
         return {
-            'id': instance.Id,
-            'cc': instance.CC,
-            'rc': instance.RC,
-            'year': instance.year,
+            'id': instance.PaperId,
+            'rank': instance.Rank,
+            'cc': instance.CitationCount,
+            'rc': instance.ReferenceCount,
+            'year': instance.Year,
             'abstract': instance.abstract,
             'source': instance.source,
             'title': instance.name,
             'label': instance.label,
             'doi': instance.DOI,
-            'prob': instance.prob,
-            'community': instance.community,
+            # 'prob': instance.prob,
+            # 'community': instance.community,
             'authors': [a['label'] for a in AuthorSerializer([author for author in instance.authors.all()], many=True).data],
             'fields': [f['label'] for f in FieldOfStudySerializer([field for field in instance.fields.all()], many=True).data],
-            'references': [paper.Id for paper in instance.references.all()],
-            'citations': [paper.Id for paper in instance.cited_by.all()],
+            # 'references': [paper.Id for paper in instance.references.all()],
+            # 'citations': [paper.Id for paper in instance.cited_by.all()],
         }

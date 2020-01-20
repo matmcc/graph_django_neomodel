@@ -55,13 +55,52 @@ SET a.name = author.AuN, a.label = author.DAuN
 MERGE (p)-[:HAS_AUTHOR]->(a)
 """
 
+add_papersPAPERS = """
+UNWIND {batch} AS row
+MERGE (p:Paper {Id:row.Id}) 
+ON CREATE SET p += {CC:row.CC, RC:row.RC, year:row.Y, abstract:row.Ab, source:row.S, label:row.DN, name:row.Ti, DOI:row.DOI, prob:row.logprob}
+ON MATCH SET p += {CC:row.CC, RC:row.RC, year:row.Y, abstract:row.Ab, source:row.S, label:row.DN, name:row.Ti, DOI:row.DOI, prob:row.logprob}
+"""
+
+add_papersFIELDS = """
+UNWIND {batch} AS row
+UNWIND row.F AS field
+MERGE (f:FieldOfStudy { Id: field.FId }) ON CREATE
+SET f.name = field.FN, f.label = field.DFN
+"""
+
+add_papersAUTHORS = """
+UNWIND {batch} AS row
+UNWIND row.AA AS author
+MERGE (a:Author { Id: author.AuId }) ON CREATE
+SET a.name = author.AuN, a.label = author.DAuN
+"""
+
+add_papersFoS_RELATIONS = """
+UNWIND {batch} AS row
+MATCH (p:Paper {Id:row.Id})
+WITH p, row
+UNWIND row.F AS field
+MATCH (f:FieldOfStudy { Id: field.FId })
+MERGE (p)-[:HAS_FIELD]->(f) 
+"""
+
+add_papersAu_RELATIONS = """
+UNWIND {batch} AS row
+MATCH (p:Paper {Id:row.Id})
+WITH p, row
+UNWIND row.AA AS author
+MATCH (a:Author { Id: author.AuId })
+MERGE (p)-[:HAS_AUTHOR]->(a) 
+"""
+
 add_cites_relations_batch = """
 UNWIND {batch} as row
 MATCH (s:Paper {Id:row.source})
-WITH s, row
 MATCH (t:Paper {Id:row.target})
 MERGE (s)-[:CITES]->(t)
 """
+# WITH s, row (between MATCH statements)
 
 d = pickle.load(open('mag.pickle', 'rb'))
 _PAPERS = d['_PAPERS']

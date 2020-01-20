@@ -8,6 +8,13 @@ verify_ssl = true
 [packages]
 django = "*"
 requests = "*"
+pandas = "*"
+neo4j = "*"
+neomodel = "*"
+django-neomodel = "*"
+djangorestframework = "*"
+markdown = "*"
+numpy = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.8.1"

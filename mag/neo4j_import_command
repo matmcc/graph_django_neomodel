@@ -1,0 +1,1 @@
+.\neo4j-admin import --database=MagGraph --id-type=INTEGER --delimiter="\t" --quote="^F" --ignore-extra-columns --max-memory=16G --high-io=true --nodes:Paper=E:/Downloads/PapersHeader.txt,E:/Downloads/Papers.txt.gz --relationships:CITES=E:/Downloads/PaperReferencesHeader.txt,E:/Downloads/PaperReferences.txt.gz

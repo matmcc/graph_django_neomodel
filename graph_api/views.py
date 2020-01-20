@@ -11,19 +11,19 @@ from rest_framework.views import APIView
 from .models import Paper, Author, FieldOfStudy
 from .serializers import (PaperSerializer, AuthorSerializer, FieldOfStudySerializer, AuthorWithPapersSerializer,
                           FieldOfStudyWithPapersSerializer, SigmaPaperSerializer)
-from .utils import count_nodes, fetch_nodes, fetch_node_details
-from . import year_percentiles
+from .utils import count_nodes, fetch_nodes, fetch_node_details, get_related_edges_unfiltered
+from . import node_layout
 
 
-class PaperList(mixins.ListModelMixin, generics.GenericAPIView):
-    """
-    List all papers
-    """
-    queryset = Paper.nodes.all()
-    serializer_class = PaperSerializer
-
-    def get(self, request, *args, **kwargs):
-        return self.list(request, *args, **kwargs)
+# class PaperList(mixins.ListModelMixin, generics.GenericAPIView):
+#     """
+#     List all papers
+#     """
+#     queryset = Paper.nodes.all()
+#     serializer_class = PaperSerializer
+#
+#     def get(self, request, *args, **kwargs):
+#         return self.list(request, *args, **kwargs)
 
 
 class PaperOne(APIView):
@@ -99,11 +99,9 @@ class SigmaPaperRelated(APIView):
     # return json by default (i.e. if suffix not included)
     renderer_classes = [JSONRenderer]
 
-    # node_ids_sent = set()
-
     def get_object(self, pk):
         try:
-            return Paper.nodes.get(Id=pk)
+            return Paper.nodes.get(PaperId=pk)
         except DoesNotExist:
             raise Http404
 
@@ -113,6 +111,7 @@ class SigmaPaperRelated(APIView):
         except KeyError:
             request.session['node_ids_sent_to_viz'] = set()
             SENT_TO_VIZ = request.session['node_ids_sent_to_viz']
+        # print(f'0: {len(SENT_TO_VIZ)}')
 
         paper = self.get_object(pk)
 
@@ -128,53 +127,52 @@ class SigmaPaperRelated(APIView):
         serializer = SigmaPaperSerializer(related_papers, many=True)
         nodes = serializer.data
 
-        # remove duplicates (e.g. if a paper is referenced and cited)
-        # nodes = [i for n, i in enumerate(nodes) if i not in nodes[n + 1:]]
-
         # Add random (x, y) positions - todo: Build function
         for n in nodes:
             SENT_TO_VIZ.add(n['id'])
+            # n['x'] = random.randrange(0, 100)
             try:
-                n['x'] = int(year_percentiles.coord_year(n['year']))
+                x_coord = node_layout.coord_year(n['year'])
+                n['x'] = x_coord
             except TypeError as e:
-                print(n)    # todo: year=2020 giving type(None) - fix
+                print(f'Error: {x_coord}, {type(x_coord)}')    # todo: year=2020 giving type(None) - fix
                 n['x'] = 0
-            n['y'] = year_percentiles.coord_community(n['community'])
+            n['y'] = node_layout.coord_rank(n['rank'])
 
         # build better edges
-        SENT_TO_VIZ.add(paper.Id)
+        # print(f'1: {len(SENT_TO_VIZ)}')
+        SENT_TO_VIZ.add(paper.PaperId)
         edges = []
-        for p in nodes:
-            for r in p['references']:
-                if r in SENT_TO_VIZ:
-                    edges.append({
-                        'id': f'e_{p["id"]}_{r}',
-                        'source': p["id"],
-                        'target': r,
-                        'weight': p['prob']})
-            for c in p['citations']:
-                if c in SENT_TO_VIZ:
-                    edges.append({
-                        'id': f'e_{c}->{p["id"]}',
-                        'source': c,
-                        'target': p["id"],
-                        'weight': p['prob']})
+        all_edges = get_related_edges_unfiltered(paper.PaperId, weight='Rank')
+        for e in all_edges:
+            if e[1] in SENT_TO_VIZ and e[2] in SENT_TO_VIZ:
+                edges.append({
+                    'id': e[0],
+                    's': e[1],
+                    't': e[2],
+                    'w': e[3]})
 
-        # edges = [{
-        #     'id': f'e{paper.Id}->{ref.Id}',
-        #     'source': paper.Id,
-        #     'target': ref.Id
-        # } for ref in references]
-        # edges += [{
-        #     'id': f'e{cit.Id}->{paper.Id}',
-        #     'source': cit.Id,
-        #     'target': paper.Id
-        # } for cit in cited_by]
+        # for p in nodes:
+        #     for r in p['references']:
+        #         if r in SENT_TO_VIZ:
+        #             edges.append({
+        #                 'id': f'{p["id"]}_{r}',
+        #                 's': p["id"],
+        #                 't': r,
+        #                 'w': p['cc']})
+        #     for c in p['citations']:
+        #         if c in SENT_TO_VIZ:
+        #             edges.append({
+        #                 'id': f'{c}_{p["id"]}',
+        #                 's': c,
+        #                 't': p["id"],
+        #                 'w': p['cc']})
 
         json_for_sigma = {
             'nodes': nodes,
             'edges': edges
         }
+        # print(f'2: {len(SENT_TO_VIZ)}')
         return Response(json_for_sigma)
 
 

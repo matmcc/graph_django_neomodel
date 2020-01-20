@@ -58,26 +58,31 @@ let _ = {
       }
     }
   }
+
 };
 
 /**
  * init data
   */
 let node_test = {
-  "_id":"5dbee93263c611215bca250e",
-  "id":2157025439,
-  "label":"collaborative web search who what where when and why",
-  "x":50,
-  "y":50,
-  "size":1,
-  "author":[{"AuN":"meredith ringel morris"},{"AuN":"jaime teevan"}],
-  "year":2009,
-  "cit_count":65,
-  "refs":[2138621811,2047221353,2156037541,2124142520,2157025439,2170741935,2122841972,2095976990,2168717408,2102958620,2135555017,2171743956,2171593626,1998084297,2167670020,1973812756,2022555286,2064522604,2169942798,1527499847,2111363262,2163475640,2005689470,2077802345,2111141603,2077305743,2026324192,2044964526,2010975745,2135880665,2071373254,2121865870,2043777533,2150347588,2097489103,2013984993,1517685083,2114861953,2155565025,2077150935,2121120672,2097559038,2119065103,1989113549,1966791154,2127194912,2133909581,2027253226,2034778682,2098995791,1967873612,2042542628,2026569904,2005137383,2139936993,2049614562,2124625829,2048505195,2141834868,2057323446,2135972296,2084495161,1554742307,2045522293,2118429556,2080215571,2068124369,2570381267,2113788004,2218550969,1975410736,1582299396,2123829050],
-  "logprob":-19.321,
-  "_created":"Thu, 01 Jan 1970 00:00:00 GMT",
-  "_updated":"Thu, 01 Jan 1970 00:00:00 GMT",
-  "_etag":"be710b53f9200a2e237ffbc6d9eed28dd84fa1e7"};
+  "FirstPage": "1739",
+  "Doctype": "Conference",
+  "Rank": 17157,
+  "label": "What do people ask their social networks, and why?: a survey study of status message q&a behavior",
+  "Publisher": "ACM",
+  "BookTitle": "CHI",
+  "Date": "2010-04-10",
+  "CitationCount": 464,
+  "Year": 2010,
+  "id": 2157025439,
+  "size": 1,
+  "x": 50,
+  "y": 50,
+  "name": "what do people ask their social networks and why a survey study of status message q a behavior",
+  "LastPage": "1748",
+  "ReferenceCount": 30,
+  "DOI": "10.1145/1753326.1753587"
+};
 node_test.color = '#137';
 
 // init variables
@@ -85,7 +90,7 @@ let API_endpoint = 'http://localhost:8000/graph/sigma/paper/related/';
 let filter;
 let g = { nodes: [], edges: [] };
 g.nodes.push(node_test);
-
+let previous_details = [];
 
 /**
  * Design
@@ -117,13 +122,13 @@ let Styles = {
     //   format: function (value) { return '#' + value; }
     // },
     size: {
-      by: 'prob',
+      by: 'rank',
       bins: 5,
       min: 3,
       max: 13,
     },
     color: {
-      by: 'prob',
+      by: 'rank',
       scheme: 'sequentialBlue',
       bins: 7,
     },
@@ -134,9 +139,9 @@ let Styles = {
   },
   edges: {
     color: {
-      by: 'weight',
-      scheme: 'cb.YlGn',
-      bins: 5
+      by: 'w',
+      scheme: 'cb.Greens',
+      bins: 7
     },
     // size: {
     //   by: 'source',
@@ -264,6 +269,10 @@ function locateNode (nid) {
   }
 }
 
+function neighbours (node) {
+  return s.graph.adjacentNodes(node.id);
+}
+
 
 /**
  * DB functions
@@ -331,7 +340,7 @@ async function fetchJs(node_id) {
   return await result;
 }
 
-function updateGraph_(s, data) {
+function updateGraph_(s, node) {
   // Calls API to return neighbouring nodes and edges, then updates graph.
   let update = {
     nodes: [],
@@ -340,7 +349,7 @@ function updateGraph_(s, data) {
 
   // Wait until getNodes and getEdges complete
   Promise.all([
-    getData(data.id).then(values => {
+    getData(node.id).then(values => {
       update = values;
     })
       // getNodes(data).then(values =>
@@ -368,17 +377,22 @@ function updateGraph_(s, data) {
     // update activeState
     activeState.dropNodes();
     activeState.dropEdges();
-    activeState.addNodes(data.id);
-    activeState.addEdges(s.graph.adjacentEdges(data.id).map(i => i.id));
+    activeState.addNodes(node.id);
+    activeState.addEdges(s.graph.adjacentEdges(node.id).map(i => i.id));
       }
   ).then(()=>{
     // refresh graph
     s.refresh();
+    // add haloe to new nodes
+    s.renderers[0].halo({nodes: update.nodes, edges: []});
+    // update filters pane
     updatePane(s.graph, filter);
+    // let details = _.$('details').firstChild;
+    // previous_details.push(details);
   }).then(() => {
-    let neighbours = s.graph.adjacentNodes(data.id);
-    // console.log(neighbours.length);
-    // if() to avoid zooming straight in which disorients.
+    let neighbours = s.graph.adjacentNodes(node.id);
+    // pan camera to neighbourhood location
+    // if() to avoid zooming straight in when no neighbours which disorients.
     if (neighbours.length > 1) {locate.nodes(neighbours.map(n => n.id));}
   });
 }
@@ -396,8 +410,10 @@ function updatePane (graph, filter) {
   // read nodes
   graph.nodes().forEach(function(n) {
     maxDegree = Math.max(maxDegree, graph.degree(n.id));
-    minYear = Math.min(minYear, n.year);
-    maxYear = Math.max(maxYear, n.year);
+    if (typeof n.year !== "undefined") {
+      minYear = Math.min(minYear, n.year);
+      maxYear = Math.max(maxYear, n.year);
+    }
   });
 
   // min degree
@@ -484,10 +500,11 @@ function arrayUnique(array) {
 }
 
 // Details pane
+
 // Create <div> with node details
 function addDiv(node) {
   let el = _.$('details');
-  while (el.firstChild) { el.removeChild(el.firstChild)}
+  while (el.firstChild) {el.removeChild(el.firstChild);}
 
   const div = document.createElement('div');
   // div.classname = "";
@@ -496,8 +513,9 @@ function addDiv(node) {
   <p>
   <b>Authors:</b> ${node.authors}, 
   <b>Year:</b> ${node.year}, 
-  <b>Reference count:</b> ${node.references.length}, 
-  <b>Citation count:</b> ${node.citations.length} - 
+  <b>Reference count:</b> ${typeof node.rc !== "undefined" ? node.rc : 0}, 
+  <b>Citation count:</b> ${typeof node.cc !== "undefined" ? node.cc : 0},
+  <b>MAG Rank:</b> ${node.rank} - 
   <a href="${node.source}">Source</a> - 
   <a href="https://doi.org/${node.doi}">DOI</a>
   </p>
@@ -507,42 +525,68 @@ function addDiv(node) {
   _.$('details').appendChild(div);
 }
 
+function addPrevNodeButton(node) {
+  let el = _.$('details-header');
+  const button = document.createElement('input');
+  button.type = "button";
+  button.value = previous_details.length;
+  button.name =  "btn_" + previous_details.length;
+  button.onclick = function () {
+    let nbrs = s.graph.adjacentNodes(node.id);
+    if (nbrs.length > 1) {locate.nodes(nbrs.map(n => n.id));}
+    renderHaloAdjacent(node);
+    addDiv(node);
+  };
+  el.appendChild(button);
+}
 
 // Halo
+function renderHalo(nodes, edges=[]) {
+  s.renderers[0].halo({
+    nodes: arrayUnique(nodes.map(n => n.id)),
+    edges: arrayUnique(edges.map(n => n.id))
+  });
+}
+
 s.bind('hovers', function(e) {
   // console.log(e.data.captor, e.data);
   if (e.data.enter.nodes.length > 0) {
     // _.$('details-text').textContent = JSON.stringify(e.data.enter.nodes[0]);
     addDiv(e.data.enter.nodes[0]);
   }
+  renderHaloAdjacent(e.data.enter.nodes);
+});
 
+
+let renderHaloAdjacent = function (nodes) {
   var adjacentNodes = [],
       adjacentEdges = [];
 
-  if (!e.data.enter.nodes.length) return;
+  if (!nodes.length) return;
 
-  // Get adjacent nodes:
-  e.data.enter.nodes.forEach(function(node) {
+// Get adjacent nodes:
+  nodes.forEach(function(node) {
     adjacentNodes = adjacentNodes.concat(s.graph.adjacentNodes(node.id));
   });
 
-  // Add hovered nodes to the array and remove duplicates:
-  adjacentNodes = arrayUnique(adjacentNodes.concat(e.data.enter.nodes));
+// Add hovered nodes to the array and remove duplicates:
+  adjacentNodes = arrayUnique(adjacentNodes.concat(nodes));
 
-  // Get adjacent edges:
-  e.data.enter.nodes.forEach(function(node) {
+// Get adjacent edges:
+  nodes.forEach(function(node) {
     adjacentEdges = adjacentEdges.concat(s.graph.adjacentEdges(node.id));
   });
 
-  // Remove duplicates:
+// Remove duplicates:
   adjacentEdges = arrayUnique(adjacentEdges);
 
-  // Render halo:
+// Render halo:
   s.renderers[0].halo({
     nodes: adjacentNodes,
     edges: adjacentEdges
   });
-});
+};
+
 
 s.renderers[0].bind('render', function(e) {
   s.renderers[0].halo();
@@ -602,9 +646,11 @@ s.bind('clickNode', function(e) {
     locate.center(locate_settings.zoomDef);
   } else {
     // TODO: this may call API for node which has previously been called - fix.
-    // console.log(e.data.node);
+    console.log(e.data.node);
     updateGraph_(s, e.data.node);
   }
+  previous_details.push(e.data.node);
+  addPrevNodeButton(e.data.node);
 });
 
 s.bind('rightClickStage', function() {

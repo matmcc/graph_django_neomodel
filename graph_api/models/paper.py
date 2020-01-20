@@ -8,21 +8,31 @@ from neomodel import (
     IntegerProperty, AliasProperty, FloatProperty)
 
 
-# Todo: changed from StructuredNode to DjangoNode to support ModelSerializer - but unsuccessful - change back?
 class Paper(StructuredNode):
     """Represents a Paper node in Neo4j"""
     __name__ = 'Paper'
-    Id = IntegerProperty(unique_index=True)
-    CC = IntegerProperty()
-    year = IntegerProperty()
-    abstract = StringProperty()
-    label = StringProperty()
-    source = StringProperty()
-    name = StringProperty(index=True)
+    PaperId = IntegerProperty(unique_index=True)
+    Rank = IntegerProperty()
     DOI = StringProperty()
+    Doctype = StringProperty()
+    name = StringProperty(index=True)
+    label = StringProperty()
+    Year = IntegerProperty()
+    Publisher = StringProperty()
+    Volume = StringProperty()
+    Issue = StringProperty()
+    FirstPage = StringProperty()
+    LastPage = StringProperty()
+    ReferenceCount = IntegerProperty()
+    CitationCount = IntegerProperty()
+    abstract = StringProperty()
+    source = StringProperty()
     prob = FloatProperty()
-    RC = IntegerProperty()
     community = IntegerProperty()
+
+    Id = AliasProperty(to='PaperId')
+    CC = AliasProperty(to='CitationCount')
+    RC = AliasProperty(to='ReferenceCount')
 
     authors = RelationshipTo('.author.Author', 'HAS_AUTHOR')
     fields = RelationshipTo('.field.FieldOfStudy', 'HAS_FIELD')

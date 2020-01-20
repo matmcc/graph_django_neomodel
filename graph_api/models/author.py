@@ -11,14 +11,13 @@ from neomodel import (
 class Author(StructuredNode):
     """Represents an Author node in Neo4j"""
     __name__ = 'Author'
-    Id = IntegerProperty(index=True)
-    label = StringProperty()
+    AuthorId = IntegerProperty(index=True)
+    Rank = IntegerProperty()
     name = StringProperty(index=True)
+    label = StringProperty()
+    PaperCount = IntegerProperty()
+    CitationCount = IntegerProperty()
+
+    Id = AliasProperty(to='AuthorId')
 
     papers = RelationshipFrom('.paper.Paper', 'HAS_AUTHOR')
-    # AuId = IntegerProperty(index=True)
-    # id = AliasProperty(to='AuId')
-    # DAuN = StringProperty()
-    # label = AliasProperty(to='DAuN')
-    # AuN = StringProperty(index=True)
-    # name = AliasProperty(to='AuN')

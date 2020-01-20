@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 from functools import lru_cache
 from timeit import default_timer as timer
 from time import sleep
+from decorators import timing
 
 # ### Mag_Api class
 # This class contains functions to call the MAG API.
@@ -177,6 +178,7 @@ class Mag_Api:
         return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
     # ### Methods to collect papers, in and out edges
+    @timing
     def get_paper(self, query):
         """
         Convenience method to get one paper
@@ -195,6 +197,37 @@ class Mag_Api:
         else:
             return None
 
+    @timing
+    def get_papers(self, papers, attribs=None):
+
+        if not isinstance(papers, list):
+            raise TypeError('arg: papers must be a list of paper ids')
+
+        if not attribs:
+            attribs = self.ATTRIBS
+
+        # API calls with OR() statements of len > 100? return a 404 error, so
+        # Chunk longer collections, make several calls, return joined result
+        max_length = 100
+        if len(papers) > max_length:
+            _papers = []
+            for batch in self._chunker(papers, max_length):
+                if self.elapsed < 1:
+                    sleep(1 - self.elapsed)
+                self.start = timer()
+                query = self._make_or(batch, 'Id')
+                _papers.extend(self.evaluate(query, count=len(batch), attribs=attribs))
+                self.elapsed = timer() - self.start
+            return _papers
+        # simpler case - this is the underlying process to call evaluate
+        else:
+            query = self._make_or(papers, 'Id')
+            _papers = self.evaluate(query, count=len(papers), attribs=attribs)
+            return _papers
+
+
+
+    @timing
     def get_refs(self, node_or_nodes, attribs=None):
         """
         Get referenced papers for this paper (node).
@@ -238,6 +271,7 @@ class Mag_Api:
             ref_papers = self.evaluate(query, count=len(refs), attribs=attribs)
             return ref_papers
 
+    @timing
     def get_cits(self, node_or_nodes, attribs=None):
         """
         Get papers which cite this paper (node).

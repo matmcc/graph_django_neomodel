@@ -140,3 +140,62 @@ def personalised_article_rank(req):
     data = fetch_papers_by_algo(req, get_par)
 
     return data
+
+
+def check_node_property_exists(node_type, node_prop):
+    q = f"MATCH (n:{node_type}) WHERE NOT EXISTS(n.{node_prop}) RETURN n"
+    results, meta = db.cypher_query(q)
+    return results
+
+
+def get_nbrs_for_mag(node_id):
+    """Return neighbours of node_id without name property. Returns list of ids"""
+    q = "MATCH (n:Paper {Id:{node_id})-[:CITES]-(p) WHERE NOT EXISTS(p.name) RETURN p.Id"
+    results, meta = db.cypher_query(q, {'node_id': node_id})
+    return results
+
+
+def get_nbrs_for_mag_list(list_of_node_ids):
+    """For list of node ids, return neighbours without name property. Returns list of ids"""
+    q = "MATCH (n:Paper)-[:CITES]-(o:Paper) WHERE n.Id in {node_ids} AND NOT EXISTS(o.name) return o.Id"
+    results, meta = db.cypher_query(q, {'node_ids': list_of_node_ids})
+    return results
+
+
+def get_related_edges_filtered(node_id, weight=None):
+    """Returns list of edges between neighbour nodes linked to node_id
+        edge will have weight if included, where weight is a property of the target node
+        list format: [edge_id, source_node_id, target_node_id, weight]"""
+    q = """
+    match q=(s:Paper {PaperId:{node_id}})-[r1:CITES]-(t:Paper)-[r2:CITES]-(u:Paper)
+    with distinct(collect(t)+s) as inner_nodes, collect(r1) + collect(r2) as cites_rels
+    unwind cites_rels as cites
+    with distinct cites, inner_nodes
+    where startNode(cites) in inner_nodes AND endNode(cites) in inner_nodes
+    return ID(cites), startNode(cites).PaperId, endNode(cites).PaperId
+    """
+    params = {'node_id': node_id}
+    if weight:
+        q += f", endNode(cites).{weight}"
+    results, meta = db.cypher_query(q, params)
+    return results
+
+
+def get_related_edges_unfiltered(node_id, weight=None):
+    """Returns list of edges from neighbour nodes of node_id: [edge_id, source_node_id, end_node_id]
+    May include nodes not yet fetched from DB
+    edge will have weight if included, where weight is a property of the target node
+    list format: [edge_id, source_node_id, target_node_id, weight]"""
+    q = """
+    match q=(s:Paper {PaperId:{node_id}})-[r1:CITES]-(t:Paper)-[r2:CITES]-(u:Paper)
+    with distinct(collect(t)+s) as inner_nodes, collect(r1) + collect(r2) as cites_rels
+    unwind cites_rels as cites
+    with distinct cites, inner_nodes
+    where startNode(cites) in inner_nodes
+    return ID(cites), startNode(cites).PaperId, endNode(cites).PaperId
+    """
+    params = {'node_id': node_id}
+    if weight:
+        q += f", endNode(cites).{weight}"
+    results, meta = db.cypher_query(q, params)
+    return results

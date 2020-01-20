@@ -185,5 +185,10 @@ LOGGING = {
             'handlers': ['console', 'logfile'],
             'propagate': True
         },
+        'mag': {
+            'level': 'DEBUG',
+            'handlers': ['console', 'logfile'],
+            'propagate': True
+        },
     },
 }
