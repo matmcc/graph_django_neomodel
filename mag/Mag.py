@@ -40,8 +40,8 @@ class Mag_Api:
         # S: source URLs
 
         # timer flags
-        self.start = None
-        self.elapsed = None
+        self.start = 0
+        self.elapsed = 0
 
         # inner class setting base URL for requests
         class BaseUrlSession(requests.Session):

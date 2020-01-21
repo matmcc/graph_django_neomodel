@@ -383,8 +383,6 @@ function updateGraph_(s, node) {
   ).then(()=>{
     // refresh graph
     s.refresh();
-    // add haloe to new nodes
-    s.renderers[0].halo({nodes: update.nodes, edges: []});
     // update filters pane
     updatePane(s.graph, filter);
     // let details = _.$('details').firstChild;
@@ -394,6 +392,9 @@ function updateGraph_(s, node) {
     // pan camera to neighbourhood location
     // if() to avoid zooming straight in when no neighbours which disorients.
     if (neighbours.length > 1) {locate.nodes(neighbours.map(n => n.id));}
+        // add halo to new nodes
+    s.renderers[0].halo({nodes: update.nodes, edges: []});
+
   });
 }
 
@@ -529,15 +530,17 @@ function addPrevNodeButton(node) {
   let el = _.$('details-header');
   const button = document.createElement('input');
   button.type = "button";
+  button.id = "btn_" + node.id;
   button.value = previous_details.length;
   button.name =  "btn_" + previous_details.length;
   button.onclick = function () {
     let nbrs = s.graph.adjacentNodes(node.id);
     if (nbrs.length > 1) {locate.nodes(nbrs.map(n => n.id));}
-    renderHaloAdjacent(node);
+    renderHaloAdjacent([node]);
     addDiv(node);
   };
   el.appendChild(button);
+
 }
 
 // Halo

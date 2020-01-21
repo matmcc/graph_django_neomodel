@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Paper, Author, FieldOfStudy
+from .papers_to_cypher import update_papers
 from .serializers import (PaperSerializer, AuthorSerializer, FieldOfStudySerializer, AuthorWithPapersSerializer,
                           FieldOfStudyWithPapersSerializer, SigmaPaperSerializer)
 from .utils import count_nodes, fetch_nodes, fetch_node_details, get_related_edges_unfiltered
@@ -119,10 +120,13 @@ class SigmaPaperRelated(APIView):
         cited_by = paper.cited_by.all()
         related_papers = references + cited_by
 
-        to_update = []
-        for p in related_papers:
-            if p.CC != len(p.cited_by) or p.RC != len(p.references):
-                to_update.append(p)
+        to_update = [p.PaperId for p in related_papers if not p.UpdatedAt]
+        if len(to_update) > 0:
+            update_papers(to_update)
+
+            references = paper.references.all()
+            cited_by = paper.cited_by.all()
+            related_papers = references + cited_by
 
         serializer = SigmaPaperSerializer(related_papers, many=True)
         nodes = serializer.data
@@ -137,7 +141,8 @@ class SigmaPaperRelated(APIView):
             except TypeError as e:
                 print(f'Error: {x_coord}, {type(x_coord)}')    # todo: year=2020 giving type(None) - fix
                 n['x'] = 0
-            n['y'] = node_layout.coord_rank(n['rank'])
+            y_coord = node_layout.coord_rank(n['rank'])
+            n['y'] = y_coord
 
         # build better edges
         # print(f'1: {len(SENT_TO_VIZ)}')

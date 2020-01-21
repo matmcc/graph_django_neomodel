@@ -5,7 +5,7 @@ from neomodel import (
     RelationshipTo,
     RelationshipFrom,
     Relationship,
-    IntegerProperty, AliasProperty)
+    IntegerProperty, AliasProperty, DateProperty)
 
 
 class Author(StructuredNode):
@@ -17,6 +17,7 @@ class Author(StructuredNode):
     label = StringProperty()
     PaperCount = IntegerProperty()
     CitationCount = IntegerProperty()
+    UpdatedAt = DateProperty()
 
     Id = AliasProperty(to='AuthorId')
 

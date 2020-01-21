@@ -6,7 +6,7 @@ from neomodel import (
     RelationshipFrom,
     Relationship,
     IntegerProperty,
-    AliasProperty)
+    AliasProperty, DateProperty)
 
 
 class FieldOfStudy(StructuredNode):
@@ -21,6 +21,7 @@ class FieldOfStudy(StructuredNode):
     Level = IntegerProperty()
     PaperCount = IntegerProperty()
     CitationCount = IntegerProperty()
+    UpdatedAt = DateProperty()
 
     Id = AliasProperty(to='FieldOfStudyId')
 

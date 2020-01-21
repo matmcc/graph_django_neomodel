@@ -5,7 +5,7 @@ from neomodel import (
     RelationshipTo,
     RelationshipFrom,
     Relationship,
-    IntegerProperty, AliasProperty, FloatProperty)
+    IntegerProperty, AliasProperty, FloatProperty, DateProperty)
 
 
 class Paper(StructuredNode):
@@ -18,6 +18,7 @@ class Paper(StructuredNode):
     name = StringProperty(index=True)
     label = StringProperty()
     Year = IntegerProperty()
+    Date = DateProperty()
     Publisher = StringProperty()
     Volume = StringProperty()
     Issue = StringProperty()
@@ -29,6 +30,7 @@ class Paper(StructuredNode):
     source = StringProperty()
     prob = FloatProperty()
     community = IntegerProperty()
+    UpdatedAt = DateProperty()
 
     Id = AliasProperty(to='PaperId')
     CC = AliasProperty(to='CitationCount')
