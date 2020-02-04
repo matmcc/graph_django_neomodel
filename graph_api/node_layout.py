@@ -7,7 +7,7 @@ from graph_api.year_distribution import get_sample, percentiles_of_sample
 
 # from neomodel import db, config
 # config.DATABASE_URL = 'bolt://neo4j:password@localhost:7687'
-SAMPLE_SIZE = 40000
+SAMPLE_SIZE = 100000
 
 
 # functions to cache

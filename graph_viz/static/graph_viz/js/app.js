@@ -233,6 +233,14 @@ let design = sigma.plugins.design(s, {
 // init ActiveState plugin:
 let activeState = sigma.plugins.activeState(s);
 
+let activeStateNodeEdges = function (node) {
+  // update activeState
+    activeState.dropNodes();
+    activeState.dropEdges();
+    activeState.addNodes(node.id);
+    activeState.addEdges(s.graph.adjacentEdges(node.id).map(i => i.id));
+};
+
 // init locate plugin:
 let locate_settings = {
   animation: {
@@ -277,52 +285,6 @@ function neighbours (node) {
 /**
  * DB functions
   */
-let buildRefOrQuery = function(node_dict) {
-  // build an or query made up of a nodes refs to send to api
-  let refs = [];
-  for (let ref of node_dict.refs) {
-    refs.push({"id":ref.toString()});
-  }
-  return {"$or": refs};
-};
-
-async function fetchJSON(url = '', data = {}) {
-  // fetch Json response from API
-  const URL = url + JSON.stringify(data);
-  const response = await fetch(URL);
-  const items = await response.json();
-  // API returns {_items: [stuff_we_want]}
-  return await items._items;
-}
-
-function getNodes(data) {
-  // returns Promise with array of nodes
-  return new Promise( function(resolve, reject) {
-    const NODES = 'http://localhost:5000/api/nodes?where=';
-    const query = buildRefOrQuery(data);
-
-    try {
-      resolve(fetchJSON(NODES, query));
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-function getEdges(data) {
-  // returns Promise with array of edges
-  return new Promise( function(resolve, reject) {
-    const EDGES = 'http://localhost:5000/api/edges?where=';
-    const query = {"source": parseInt(data.id)};
-
-    try {
-      resolve(fetchJSON(EDGES, query));
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
 function getData(data) {
   return new Promise( function (resolve, reject) {
     try {
@@ -352,20 +314,6 @@ function updateGraph_(s, node) {
     getData(node.id).then(values => {
       update = values;
     })
-      // getNodes(data).then(values =>
-    //   {
-    //     values.forEach( (n) => {
-    //     if (!s.graph.nodes(n['id'])) {
-    //       update.nodes.push(n);}
-    //     });
-    //   }),
-    // getEdges(data).then(values =>
-    //   {
-    //     values.forEach( (e) => {
-    //       if (!s.graph.edges(e['id'])) {
-    //         update.edges.push(e);}
-    //     });
-    //   }),
   ]).then(values => {
     console.log(update);
     // then update graph
@@ -374,19 +322,13 @@ function updateGraph_(s, node) {
     design.deprecate();
     design.apply();
     }).then(()=>{
-    // update activeState
-    activeState.dropNodes();
-    activeState.dropEdges();
-    activeState.addNodes(node.id);
-    activeState.addEdges(s.graph.adjacentEdges(node.id).map(i => i.id));
-      }
-  ).then(()=>{
+      // apply activeState to node and connected edges
+    activeStateNodeEdges(node);
+    }).then(()=>{
     // refresh graph
     s.refresh();
     // update filters pane
     updatePane(s.graph, filter);
-    // let details = _.$('details').firstChild;
-    // previous_details.push(details);
   }).then(() => {
     let neighbours = s.graph.adjacentNodes(node.id);
     // pan camera to neighbourhood location
@@ -536,7 +478,8 @@ function addPrevNodeButton(node) {
   button.onclick = function () {
     let nbrs = s.graph.adjacentNodes(node.id);
     if (nbrs.length > 1) {locate.nodes(nbrs.map(n => n.id));}
-    renderHaloAdjacent([node]);
+    // renderHaloAdjacent([node]); // cannot get to work although calling from console works
+    activeStateNodeEdges(node);
     addDiv(node);
   };
   el.appendChild(button);
