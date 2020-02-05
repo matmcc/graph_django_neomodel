@@ -3,44 +3,52 @@
 <head>
     {% include 'graph_viz/imports.html' %}
     <link rel="stylesheet" type="text/css" href="{% static 'graph_viz/style.css' %}">
-
+    <link rel="shortcut icon" type="image/png" href="{% static 'favicon.ico' %}"/>
     <title>Graph Viz</title>
 </head>
 
 <body>
 
-    <div id="container">
+    <div id="container" > {# class="flex-container" #}
 
-      <div id="graph-container"></div>
+      <div id="graph-wrapper"><div id="graph-container"></div></div>
 
-      <div id="pane_wrapper" class="col-container">
+      <div id="pane_wrapper" >
 
-        <div id="details-pane" class="col_">
-          <div id="details-header">
-            <h2 class="underline" style="display: inline-block;">details</h2>
-          </div>
-
-          <div id="details" class="flex-container">
-            <textarea id="details-text" rows="9" readonly></textarea>
-          </div>
-        </div>
-
-        <div id="control-pane" class="col_">
+        <div id="control-pane" >
           <h2 class="underline">filters</h2>
 
-          <div id="controls" class="flex-container">
-            <div id="controls-left" class="col-left">
+          <div id="controls" >
 
-              <h3>min degree <span id="min-degree-val">0</span></h3>
-              0 <input id="min-degree" type="range" min="0" max="0" value="0"> <span id="max-degree-value">0</span><br>
-
-              <h3>min year <span id="year-val">0</span></h3>
-              <span id="min-year-val">0</span> <input id="min-year" type="range" min="0" max="0" value="0"> <span id="max-year-val">0</span><br>
-
+            <div class="filter-div">
+              <h3>min degree <span id="degree-val">0</span></h3>
+              <span id="min-degree-val">0</span>
+              <input id="min-degree" type="range" min="0" max="0" value="0" class="filter-range">
+              <span id="max-degree-value">0</span><br>
             </div>
-            {#              <span class="line"></span>#}
 
-            <div id="controls-right" class="col-right">
+            <div class="filter-div">
+            <h3>min year <span id="year-val">0</span></h3>
+            <span id="min-year-val">0</span>
+              <input id="min-year" type="range" min="0" max="0" value="0" class="filter-range">
+              <span id="max-year-val">0</span><br>
+            </div>
+
+            <div class="filter-div">
+            <h3>Ref Count <span id="refs-val">0</span></h3>
+            <span id="min-refs-val">0</span>
+              <input id="min-refs" type="range" min="0" max="0" value="0" class="filter-range">
+              <span id="max-refs-val">0</span><br>
+            </div>
+
+            <div class="filter-div">
+            <h3>Cit Count <span id="cits-val">0</span></h3>
+            <span id="min-cits-val">0</span>
+              <input id="min-cits" type="range" min="0" max="0" value="0" class="filter-range">
+              <span id="max-cits-val">0</span><br>
+            </div>
+
+            <div id="controls-toggles" >
 
               <div><button id="reset-btn">Reset</button></div>
               <div><button id="export-btn">Export</button></div>
@@ -58,6 +66,17 @@
           <div id="dump" class="hidden"></div>
 
         </div>
+        <div id="details-pane" >
+          <div id="details-header">
+            <h2 class="underline" style="display: inline-block;">details</h2>
+          </div>
+
+          <div id="details" >
+            <textarea id="details-text" rows="9" readonly></textarea>
+          </div>
+        </div>
+
+
 
       </div>
 

@@ -67,20 +67,20 @@ let _ = {
 let node_test = {
   "FirstPage": "1739",
   "Doctype": "Conference",
-  "Rank": 17157,
+  "rank": 17157,
   "label": "What do people ask their social networks, and why?: a survey study of status message q&a behavior",
   "Publisher": "ACM",
   "BookTitle": "CHI",
   "Date": "2010-04-10",
-  "CitationCount": 464,
-  "Year": 2010,
+  "cc": 464,
+  "year": 2010,
   "id": 2157025439,
   "size": 1,
-  "x": 50,
-  "y": 50,
+  "x": 75,
+  "y": 1,
   "name": "what do people ask their social networks and why a survey study of status message q a behavior",
   "LastPage": "1748",
-  "ReferenceCount": 30,
+  "rc": 30,
   "DOI": "10.1145/1753326.1753587"
 };
 node_test.color = '#137';
@@ -199,6 +199,7 @@ let settings = {
 
   zoomMin: 0.001,
   zoomMax: 3,
+  doubleClickEnabled: false,
 
   nodeHaloColor: '#ffc021',
   edgeHaloColor: '#f0f061',
@@ -245,21 +246,21 @@ let activeStateNodeEdges = function (node) {
 let locate_settings = {
   animation: {
     node: {
-      duration: 500
+      duration: 800
     },
     edge: {
       duration: 300
     },
     center: {
-      duration: 300
+      duration: 800
     }
   },
   // PADDING:
   padding: {
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0
+    top: 20,
+    right: 10,
+    bottom: 20,
+    left: 10
   },
   // GLOBAL SETTINGS:
   // focusOut: true,
@@ -348,7 +349,9 @@ function updatePane (graph, filter) {
   // get max degree
   let maxDegree = 0,
       minYear = 3000,
-      maxYear = 0;
+      maxYear = 0,
+      maxCit = 0,
+      maxRef = 0;
 
   // read nodes
   graph.nodes().forEach(function(n) {
@@ -357,11 +360,21 @@ function updatePane (graph, filter) {
       minYear = Math.min(minYear, n.year);
       maxYear = Math.max(maxYear, n.year);
     }
+    if (typeof n.rc !== "undefined") {
+      maxRef = Math.max(maxRef, n.rc);
+    }
+    if (typeof n.cc !== "undefined") {
+      maxCit = Math.max(maxCit, n.cc);
+    }
   });
 
   // min degree
   _.$('min-degree').max = maxDegree;
   _.$('max-degree-value').textContent = maxDegree;
+  _.$('min-refs').max = maxRef;
+  _.$('max-refs-val').textContent = maxRef;
+  _.$('min-cits').max = maxCit;
+  _.$('max-cits-val').textContent = maxCit;
 
   // min and max year
   _.$('min-year').min = minYear;
@@ -379,6 +392,10 @@ function updatePane (graph, filter) {
     _.$('min-degree-val').textContent = '0';
     _.$('min-year').value = minYear;
     _.$('year-val').textContent = minYear;
+    _.$('min-refs').value = 0;
+    _.$('min-refs-val').textContent = '0';
+    _.$('min-cits').value = 0;
+    _.$('min-cits-val').textContent = '0';
     filter.undo().apply();
     _.$('dump').textContent = '';
     _.hide('#dump');
@@ -422,6 +439,30 @@ function applyMinYearFilter(e) {
           .apply();
 }
 
+function applyMinRefsFilter(e) {
+  let v = e.target.value;
+  _.$('refs-val').textContent = v;
+
+  filter.undo('min-refs')
+          .nodesBy(function(n, options) {
+                    return n.rc >= options.minRefsVal;
+                  },
+                  { minRefsVal: +v }, 'min-refs' )
+          .apply();
+}
+
+function applyMinCitsFilter(e) {
+  let v = e.target.value;
+  _.$('cits-val').textContent = v;
+
+  filter.undo('min-cits')
+          .nodesBy(function(n, options) {
+                    return n.cc >= options.minCitsVal;
+                  },
+                  { minCitsVal: +v }, 'min-cits' )
+          .apply();
+}
+
 function applyHideEdgesFilter(e) {
   if (e.target.checked) {
     filter.undo('hide-edges')
@@ -453,14 +494,14 @@ function addDiv(node) {
   // div.classname = "";
   div.innerHTML = `
   <h3>${node.label}</h3>
+  <p><b>Authors:</b> ${node.authors}</p>
   <p>
-  <b>Authors:</b> ${node.authors}, 
   <b>Year:</b> ${node.year}, 
   <b>Reference count:</b> ${typeof node.rc !== "undefined" ? node.rc : 0}, 
   <b>Citation count:</b> ${typeof node.cc !== "undefined" ? node.cc : 0},
   <b>MAG Rank:</b> ${node.rank} - 
-  <a href="${node.source}">Source</a> - 
-  <a href="https://doi.org/${node.doi}">DOI</a>
+  <a href="${node.source}" target="_blank">Source</a> - 
+  <a href="https://doi.org/${node.doi}" target="_blank">DOI</a>
   </p>
   <p><b>Abstract:</b> ${node.abstract}</p>
   `;
@@ -599,13 +640,15 @@ s.bind('clickNode', function(e) {
   addPrevNodeButton(e.data.node);
 });
 
-s.bind('rightClickStage', function() {
+s.bind('doubleClickStage', function() {
   locate.center(locate_settings.zoomDef);
 });
 
 // TODO: These are not bound together - therefore one does not update as another is used - intended?
 _.$('min-degree').addEventListener("input", applyMinDegreeFilter);
 _.$('min-year').addEventListener("input", applyMinYearFilter);
+_.$('min-refs').addEventListener("input", applyMinRefsFilter);
+_.$('min-cits').addEventListener("input", applyMinCitsFilter);
 _.$('hide_edges').addEventListener("change", applyHideEdgesFilter);
 
 // s.bind('clickEdge doubleClickEdge rightClickEdge', function(e) {

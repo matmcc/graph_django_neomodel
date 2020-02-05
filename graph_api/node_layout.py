@@ -87,8 +87,12 @@ def coord_rank(rank):
     If one year covers several percentiles then that year will pick a random coord within that range
     """
     coord = coord_percentile(rank, percentile_dist_ranks)
-    # reverse co-ord, 110 in case values gt 100
-    coord = 101 - coord
+    # rank would need reversing, as lower => more important
+    # but y co-ord's are drawn 0-100 from top-bottom
+    # and we more important papers to be at the top
+    # so we can leave as is
+    # if reversing is needed, uncomment next line
+    # coord = 101 - coord
     return coord
 
 
