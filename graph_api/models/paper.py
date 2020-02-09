@@ -40,3 +40,5 @@ class Paper(StructuredNode):
     fields = RelationshipTo('.field.FieldOfStudy', 'HAS_FIELD')
     references = RelationshipTo('.paper.Paper', 'CITES')
     cited_by = RelationshipFrom('.paper.Paper', 'CITES')
+
+    # Todo: add methods to test now - updated_at > some_value => update

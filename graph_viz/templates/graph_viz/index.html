@@ -17,6 +17,12 @@
 
         <div id="control-pane" >
           <h2 class="underline">filters</h2>
+          <input type="text" id="MAGsearch" placeholder="Search MAG">
+          <input type="button" id="MAGsearchBtn" value="search">
+          <select name="expansion_mode" id="expansion-mode">
+            <option value="related">Related</option>
+            <option value="cocited">Co-cited</option>
+          </select>
 
           <div id="controls" >
 
@@ -52,8 +58,9 @@
 
               <div><button id="reset-btn">Reset</button></div>
               <div><button id="export-btn">Export</button></div>
-              <div><button id="toggle-layout">Layout</button></div>
-              <div><button id="FR">FR layout</button></div>
+              <div><button id="FL-layout">Force</button></div>
+              <div><button id="FR-layout">Spring</button></div>
+              <div><button id="previous-layout">Previous</button></div>
               <div>
                 <input type="checkbox" id="hide_edges" name="hide_edges">
                 <label for="hide_edges">Hide Edges</label>

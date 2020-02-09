@@ -91,7 +91,13 @@ class Mag_Api:
 
         # return first (most likely) interpretation value for evaluation
         if return_first_interpretation:
-            ret = ret['interpretations'][0]['rules'][0]['output']['value']
+            try:
+                ret = ret['interpretations']
+            except IndexError as err:
+                print(err)
+                return []
+            if ret:
+                ret = [ret[0]['rules'][0]['output']['value']]
 
         return ret
 

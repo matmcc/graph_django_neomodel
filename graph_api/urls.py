@@ -13,6 +13,9 @@ urlpatterns = [
     path('sigma/paper/related/<int:pk>/', views.SigmaPaperRelated.as_view()),
     path('sigma/nodes', views.GetNodesData.as_view()),
     path('sigma/node', views.GetNodeData.as_view()),
+    path('sigma/paper/cocited/<int:pk>/', views.SigmaPaperCoCited.as_view()),
+    path('interpret/', views.GetPaperFromMag.as_view()),
+    path('flush/', views.flush_session),
 ]
 
 urlpatterns = format_suffix_patterns(urlpatterns)

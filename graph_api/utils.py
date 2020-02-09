@@ -1,7 +1,8 @@
 from neomodel import db
 
+from decorators import timing
 from .models import Author, FieldOfStudy, Paper
-from .serializers import AuthorSerializer, FieldOfStudySerializer, PaperSerializer
+from .serializers import AuthorSerializer, FieldOfStudySerializer, PaperSerializer, SigmaPaperSerializer
 
 MODELS = {
     'author': Author,
@@ -12,7 +13,7 @@ MODELS = {
 SERIALIZERS = {
     'author': AuthorSerializer,
     'field': FieldOfStudySerializer,
-    'paper': PaperSerializer
+    'paper': SigmaPaperSerializer
 }
 
 # Todo: fetch_node returns list, others return dict - use wrapper method to return dict (json) with status and count?
@@ -93,18 +94,19 @@ def fetch_papers_by_algo(req, cypher_q):
     results, meta = db.cypher_query(cypher_q, {'node_id': node_id, 'count': count})
     nodes = [Paper.inflate(row[0]) for row in results]
 
-    serialized_data = serialize_nodes('paper', nodes)
+    # serialized_data = serialize_nodes('paper', nodes)
 
-    return serialized_data
+    return nodes
 
 
+@timing
 def fetch_co_citations(req):
     """Return list of papers with 1 or more shared references, ordered by number shared references"""
     get_co_citations = """
-    Match (p:Paper {Id:{node_id}})-[:CITES]->(r:Paper)<-[c:CITES]-(q:Paper) 
-    RETURN q, count(c) as rc  
-    ORDER BY rc DESC LIMIT {count}
-    """
+    MATCH (p:Paper {PaperId:{node_id}})-[:CITES]->(r:Paper)<-[c:CITES]-(q:Paper) 
+    WITH q, count(c) as rc
+    WHERE rc > 1
+    RETURN q, rc ORDER BY rc DESC LIMIT {count}"""
     data = fetch_papers_by_algo(req, get_co_citations)
 
     return data
@@ -199,3 +201,23 @@ def get_related_edges_unfiltered(node_id, weight=None):
         q += f", endNode(cites).{weight}"
     results, meta = db.cypher_query(q, params)
     return results
+
+
+def get_related_edges_two_layers(node_id, weight=None):
+    """Returns list of edges between neighbour nodes linked to node_id
+        edge will have weight if included, where weight is a property of the target node
+        list format: [edge_id, source_node_id, target_node_id, weight]"""
+    q = """
+    match q=(s:Paper {PaperId:{node_id}})-[r1:CITES]-(t:Paper)-[r2:CITES]-(u:Paper)
+    with distinct(collect(t)+s+collect(u)) as _nodes, collect(r1) + collect(r2) as cites_rels
+    unwind cites_rels as cites
+    with distinct cites, _nodes
+    where startNode(cites) in _nodes AND endNode(cites) in _nodes
+    return ID(cites), startNode(cites).PaperId, endNode(cites).PaperId
+    """
+    params = {'node_id': node_id}
+    if weight:
+        q += f", endNode(cites).{weight}"
+    results, meta = db.cypher_query(q, params)
+    return results
+

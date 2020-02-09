@@ -16,7 +16,7 @@ let _ = {
   removeClass: function(selectors, cssClass) {
     let nodes = document.querySelectorAll(selectors);
     let l = nodes.length;
-    for ( i = 0 ; i < l; i++ ) {
+    for ( let i = 0 ; i < l; i++ ) {
       let el = nodes[i];
       // Bootstrap compatibility
       el.className = el.className.replace(cssClass, '');
@@ -26,10 +26,10 @@ let _ = {
   addClass: function (selectors, cssClass) {
     let nodes = document.querySelectorAll(selectors);
     let l = nodes.length;
-    for ( i = 0 ; i < l; i++ ) {
+    for ( let i = 0 ; i < l; i++ ) {
       let el = nodes[i];
       // Bootstrap compatibility
-      if (-1 == el.className.indexOf(cssClass)) {
+      if (-1 === el.className.indexOf(cssClass)) {
         el.className += ' ' + cssClass;
       }
     }
@@ -47,7 +47,7 @@ let _ = {
     var cssClass = cssClass || "hidden";
     let nodes = document.querySelectorAll(selectors);
     let l = nodes.length;
-    for ( i = 0 ; i < l; i++ ) {
+    for ( let i = 0 ; i < l; i++ ) {
       let el = nodes[i];
       //el.style.display = (el.style.display != 'none' ? 'none' : '' );
       // Bootstrap compatibility
@@ -58,8 +58,37 @@ let _ = {
       }
     }
   }
-
 };
+
+let search = _.$("MAGsearch");
+search.addEventListener("keyup", function (event) {
+  if(event.key === "Enter") {
+    searchMAG(search.value);
+    search.value = null;
+  }
+});
+
+_.$("MAGsearchBtn").addEventListener("click", function () {
+  if(search.value !== null || undefined){
+    searchMAG(search.value);
+    search.value = null;
+  }
+});
+
+function searchMAG(query) {
+  let search_endpoint = API_search_endpoint;
+  Promise.resolve(getData("?query="+query, search_endpoint)).then(values => {
+    console.log(values);
+    // then update graph
+    s.graph.updateSkipDuplicateNodes(values);
+    // re-apply design
+    design.deprecate();
+    design.apply();
+    }).then(()=>{
+    s.refresh();
+    updatePane(s.graph, filter);
+  });
+}
 
 /**
  * init data
@@ -86,7 +115,10 @@ let node_test = {
 node_test.color = '#137';
 
 // init variables
-let API_endpoint = 'http://localhost:8000/graph/sigma/paper/related/';
+let API_related_endpoint = 'http://localhost:8000/graph/sigma/paper/related/',
+    API_search_endpoint = "http://localhost:8000/graph/interpret/",
+    API_cocited_endpoint = 'http://localhost:8000/graph/sigma/paper/cocited/';
+let API_endpoint = API_related_endpoint;
 let filter;
 let g = { nodes: [], edges: [] };
 g.nodes.push(node_test);
@@ -122,10 +154,10 @@ let Styles = {
     //   format: function (value) { return '#' + value; }
     // },
     size: {
-      by: 'rank',
-      bins: 5,
+      by: 'cc',
+      bins: 9,
       min: 3,
-      max: 13,
+      max: 18,
     },
     color: {
       by: 'rank',
@@ -286,18 +318,18 @@ function neighbours (node) {
 /**
  * DB functions
   */
-function getData(data) {
+function getData(query, API_endpoint) {
   return new Promise( function (resolve, reject) {
     try {
-      resolve(fetchJs(data));
+      resolve(fetchJs(query, API_endpoint));
     } catch (error) {
       reject(error);
     }
   });
 }
 
-async function fetchJs(node_id) {
-  const URL = API_endpoint + node_id;
+async function fetchJs(query, API_endpoint) {
+  const URL = API_endpoint + query;
   const response = await fetch(URL);
   const result = await response.json();
   return await result;
@@ -312,7 +344,7 @@ function updateGraph_(s, node) {
 
   // Wait until getNodes and getEdges complete
   Promise.all([
-    getData(node.id).then(values => {
+    getData(node.id, API_endpoint).then(values => {
       update = values;
     })
   ]).then(values => {
@@ -583,46 +615,97 @@ s.renderers[0].bind('render', function(e) {
 var fa = sigma.layouts.configForceLink(s, {
   edgeWeightInfluence: 1,
   linLogMode: true, //  emphasize clusters (and outliers)
-  // randomize: 'globally',
+  randomize: 'globally',
   // seems to crash browser if true and randomize not set to globally
   // (but should speed up large graph layout)
-  // barnesHutOptimize: true,
-  // barnesHutTheta: 1.2,
-  // strongGravityMode: true,
+  barnesHutOptimize: true,
+  barnesHutTheta: 1.2,
+  strongGravityMode: true,
   worker: true,
   autoStop: true,
   avgDistanceThreshold: 0.05,
   background: true,
-  easing: 'cubicInOut'
+  easing: 'quadraticInOut',
+  duration: 1200,
 });
 
 fa.bind('start stop', function (event) {
-  console.log(event.type);
   if (event.type === 'stop') {
-    document.getElementById('toggle-layout').innerHTML = 'Start layout';
+    _.$('FL-layout').innerHTML = 'Force';
+  }
+  if (event.type === 'start') {
+    _.$('FL-layout').innerHTML = 'Stop layout';
   }
 });
 
-document.getElementById('toggle-layout').addEventListener('click', function() {
+document.getElementById('FL-layout').addEventListener('click', function() {
   if ((s.supervisor || {}).running) {
     sigma.layouts.killForceLink();
-    document.getElementById('toggle-layout').innerHTML = 'Start layout';
+    document.getElementById('FL-layout').innerHTML = 'Force';
   } else {
+    storeLayoutAsPrevLayout();
     sigma.layouts.startForceLink({worker: true});
-    document.getElementById('toggle-layout').innerHTML = 'Stop layout';
+    document.getElementById('FL-layout').innerHTML = 'Stop layout';
   }
 });
 
 // Configure the Fruchterman-Reingold algorithm:
-var frListener = sigma.layouts.fruchtermanReingold.configure(s, {
-  iterations: 500,
+let fr = sigma.layouts.fruchtermanReingold.configure(s, {
+  iterations: 100,
   easing: 'quadraticInOut',
-  duration: 800
+  duration: 1200
 });
 
-_.$('FR').addEventListener("click", function(e) {
+fr.bind('start stop', function (event) {
+  if (event.type === 'stop') {
+    _.$('FR-layout').innerHTML = 'Spring';
+  }
+  if (event.type === 'start') {
+    _.$('FR-layout').innerHTML = 'Stop layout';
+  }
+});
+
+_.$('FR-layout').addEventListener("click", function(e) {
+  storeLayoutAsPrevLayout();
   sigma.layouts.fruchtermanReingold.start(s);
 });
+
+let storeLayoutAsPrevLayout = function() {
+  s.graph.nodes().forEach(function (n) {
+    n.x_prev = n.x;
+    n.y_prev = n.y;
+  });
+};
+
+let loadPrevLayout = function() {
+  s.graph.nodes().forEach(function (n) {
+    let x = n.x,
+        y = n.y;
+    n.x_new = n.x_prev;
+    n.x_prev = x;
+    n.y_new = n.y_prev;
+    n.y_prev = y;
+  });
+  sigma.plugins.animate(
+      s,
+      {
+        x: "x_new",
+        y: "y_new"
+      },
+      {
+        duration: 1200,
+      }
+  );
+  // s.refresh();
+  // filter.undo().apply();
+};
+// todo: Causes interaction in graph to freeze until e.g. any filter applied.
+_.$("previous-layout").addEventListener("click", loadPrevLayout);
+
+// s.bind('animate.start animate.end', function(event) {
+//   console.log(event.type); // "animate.start"
+//   if(event === "animate.end") {s.refresh()}
+// });
 
 /**
  * Bind events
@@ -650,6 +733,12 @@ _.$('min-year').addEventListener("input", applyMinYearFilter);
 _.$('min-refs').addEventListener("input", applyMinRefsFilter);
 _.$('min-cits').addEventListener("input", applyMinCitsFilter);
 _.$('hide_edges').addEventListener("change", applyHideEdgesFilter);
+
+let API_mode = _.$('expansion-mode');
+API_mode.addEventListener("change", function () {
+  API_endpoint = "http://localhost:8000/graph/sigma/paper/" + API_mode.value + "/";
+  console.log(API_endpoint);
+});
 
 // s.bind('clickEdge doubleClickEdge rightClickEdge', function(e) {
 //   console.log(e.type, e.data.edge, e.data.captor);

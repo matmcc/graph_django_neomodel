@@ -9,6 +9,17 @@ m = Mag_Api()
 
 
 @timing
+def get_paper_via_interpret(query):
+    interpret_results = m.interpret(query)
+    if not interpret_results:
+        return []
+    evaluate_interpret = m.evaluate(interpret_results[0], count=50)
+    papers = [p["Id"] for p in evaluate_interpret]
+    update_papers(papers)
+    return papers
+
+
+@timing
 def update_papers(paper_ids):
     # Call MAG for papers
     papers_from_mag = m.get_papers(paper_ids)
