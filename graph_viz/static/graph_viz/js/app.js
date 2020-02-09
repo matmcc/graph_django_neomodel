@@ -1,6 +1,8 @@
 "use strict";
 /*jshint esversion: 8 */
 
+//region Utilities
+//----------------------------------------------------------------------------------------------------------------------
 /**
  * DOM utility function
  */
@@ -60,36 +62,43 @@ let _ = {
   }
 };
 
-let search = _.$("MAGsearch");
-search.addEventListener("keyup", function (event) {
-  if(event.key === "Enter") {
-    searchMAG(search.value);
-    search.value = null;
-  }
-});
+// Return array of unique values
+// see: https://stackoverflow.com/questions/1960473
+function arrayUnique(array) {
+  return [...new Set(array)];
+}
 
-_.$("MAGsearchBtn").addEventListener("click", function () {
-  if(search.value !== null || undefined){
-    searchMAG(search.value);
-    search.value = null;
-  }
-});
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
 
-function searchMAG(query) {
-  let search_endpoint = API_search_endpoint;
-  Promise.resolve(getData("?query="+query, search_endpoint)).then(values => {
-    console.log(values);
-    // then update graph
-    s.graph.updateSkipDuplicateNodes(values);
-    // re-apply design
-    design.deprecate();
-    design.apply();
-    }).then(()=>{
-    s.refresh();
-    updatePane(s.graph, filter);
+//region Fetch data
+//----------------------------------------------------------------------------------------------------------------------
+// AJAX requests using fetch and promises for async
+// https://developer.mozilla.org/en/docs/Web/API/Fetch_API
+// https://developers.google.com/web/updates/2015/03/introduction-to-fetch
+
+function getData(query, API_endpoint) {
+  return new Promise( function (resolve, reject) {
+    try {
+      resolve(fetchJs(query, API_endpoint));
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
+async function fetchJs(query, API_endpoint) {
+  const URL = API_endpoint + query;
+  const response = await fetch(URL);
+  const result = await response.json();
+  return await result;
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Setup and constants
+//----------------------------------------------------------------------------------------------------------------------
 /**
  * init data
   */
@@ -123,6 +132,183 @@ let filter;
 let g = { nodes: [], edges: [] };
 g.nodes.push(node_test);
 let previous_details = [];
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Search
+//----------------------------------------------------------------------------------------------------------------------
+let search = _.$("MAGsearch");  // search input in Html
+
+search.addEventListener("keyup", function (event) {
+  if(event.key === "Enter") {
+    searchMAG(search.value);
+    search.value = null;
+  }
+});
+
+_.$("MAGsearchBtn").addEventListener("click", function () {
+  if(search.value !== null || undefined){
+    searchMAG(search.value);
+    search.value = null;
+  }
+});
+
+function searchMAG(query) {
+  let search_endpoint = API_search_endpoint;
+  Promise.resolve(getData("?query="+query, search_endpoint)).then(values => {
+    // Update graph
+    s.graph.updateSkipDuplicateNodes(values);
+    }).then(()=>{
+      // re-apply design
+      design.deprecate();
+      design.apply();
+      s.refresh();
+      updatePane(s.graph, filter);
+  });
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Sigma setup, settings, Init graph
+//----------------------------------------------------------------------------------------------------------------------
+// see: https://github.com/jacomyal/sigma.js/wiki/
+// and 'examples' - demo html files: https://github.com/jacomyal/sigma.js
+
+
+// Add methods to sigma:
+// https://github.com/jacomyal/sigma.js/wiki/Graph-API
+// Add a method to the graph model that updates the graph
+// ignoring node already present (cf. throw Error):
+sigma.classes.graph.addMethod('updateSkipDuplicateNodes', function(g) {
+
+  for (let node of g.nodes) {
+    if (!(this.nodesIndex.get(node.id))) {
+       this.addNode(node);}
+  }
+
+  for (let edge of g.edges) {
+    if (!(this.edgesIndex.get(edge.id))) {
+      this.addEdge(edge);
+    }
+  }
+
+  return this;
+});
+
+//https://github.com/jacomyal/sigma.js/wiki/Settings
+/**
+ * Init sigma graph
+  */
+// sigma settings
+let settings = {
+  nodeActiveColor: 'default',
+  nodeBorderSize: 1,
+  nodeActiveBorderSize: 2,
+  nodeActiveOuterBorderSize: 3,
+  defaultNodeBorderColor: '#fff',
+  defaultNodeHoverBorderColor: '#fff',
+  defaultNodeActiveBorderColor: '#fff',
+  defaultNodeActiveOuterBorderColor: 'rgb(236, 81, 72)',
+
+  labelActiveColor: 'default',
+  labelThreshold: 21,
+  labelColor: 'node',
+  defaultLabelSize: 12,
+  // labelSize: 'proportional',
+  // labelSizeRatio: 2
+  maxNodeLabelLineLength: 25,
+
+  zoomMin: 0.001,
+  zoomMax: 3,
+  doubleClickEnabled: false,
+
+  nodeHaloColor: '#ffc021',
+  edgeHaloColor: '#f0f061',
+  nodeHaloSize: 6,
+  edgeHaloSize: 2,
+
+  // enableEdgeHovering: true,  // canvas renderer only
+  // edgeHoverPrecision: 5,
+  shortLabelsOnHover: true,    // enable the short label display mode
+  // spriteSheetResolution: 2048, // resolution of the sprite sheet square
+  // spriteSheetMaxSprites: 8     // number max of sprites
+
+  animationsTime: 500,
+};
+
+// init sigma
+let s = new sigma({
+  graph: g,
+  renderer: {
+    container: document.getElementById('graph-container'),
+    type: 'webgl' // 'canvas'
+  },
+  settings: settings
+});
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Sigma Update Graph
+//----------------------------------------------------------------------------------------------------------------------
+// This function updates the graph and then updates relevant functions and plugins to match the newly loaded data.
+function updateGraph_(s, node) {
+  // Calls API to return neighbouring nodes and edges, then updates graph.
+  let update = {
+    nodes: [],
+    edges: []
+  };
+
+  // Wait until getNodes and getEdges complete
+  Promise.all([
+    getData(node.id, API_endpoint).then(values => {
+      update = values;
+    })
+  ]).then(values => {
+    console.log(update);
+    // then update graph
+    s.graph.updateSkipDuplicateNodes(update);
+    // re-apply design
+    design.deprecate();
+    design.apply();
+    }).then(()=>{
+      // apply activeState to node and connected edges
+    activeStateNodeEdges(node);
+    }).then(()=>{
+    // refresh graph
+    s.refresh();
+    // update filters pane
+    updatePane(s.graph, filter);
+  }).then(() => {
+    s.startNoverlap();
+    let neighbours = s.graph.adjacentNodes(node.id);
+    // pan camera to neighbourhood location
+    // if() to avoid zooming straight in when no neighbours which disorients.
+    if (neighbours.length > 1) {locate.nodes(neighbours.map(n => n.id));}
+        // add halo to new nodes
+  //   s.renderers[0].halo({nodes: update.nodes, edges: []});
+  //   console.log(neighbours);
+  //   neighbours.forEach(function (n) {
+  //   n.x_prev = n.x;
+  //   n.y_prev = n.y;
+  // });
+    // storeLayoutAsPrevLayout(neighbours);
+  });
+}
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Sigma Design plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/Linkurious/linkurious.js/tree/develop/plugins/sigma.plugins.design
+/*
+  This plugin provides an API to design the graph visualization like a boss.
+  The graph design is made of a color palette and a set of styles.
+  A style is a mapping between a node or edge property and a visual variable,
+  with optional parameters depending on the visual variable.
+*/
 
 /**
  * Design
@@ -186,82 +372,19 @@ let Styles = {
   }
 };
 
-
-// Add methods to sigma:
-//   Add a method to the graph model that updates the graph
-//   ignoring node already present (cf. throw Error):
-sigma.classes.graph.addMethod('updateSkipDuplicateNodes', function(g) {
-
-  for (let node of g.nodes) {
-    if (!(this.nodesIndex.get(node.id))) {
-       this.addNode(node);}
-  }
-
-  for (let edge of g.edges) {
-    if (!(this.edgesIndex.get(edge.id))) {
-      this.addEdge(edge);
-    }
-  }
-
-  return this;
-});
-
-
-/**
- * Init sigma graph
-  */
-// sigma settings
-let settings = {
-  nodeActiveColor: 'default',
-  nodeBorderSize: 1,
-  nodeActiveBorderSize: 2,
-  nodeActiveOuterBorderSize: 3,
-  defaultNodeBorderColor: '#fff',
-  defaultNodeHoverBorderColor: '#fff',
-  defaultNodeActiveBorderColor: '#fff',
-  defaultNodeActiveOuterBorderColor: 'rgb(236, 81, 72)',
-
-  labelActiveColor: 'default',
-  labelThreshold: 21,
-  labelColor: 'node',
-  defaultLabelSize: 12,
-  // labelSize: 'proportional',
-  // labelSizeRatio: 2
-  maxNodeLabelLineLength: 25,
-
-  zoomMin: 0.001,
-  zoomMax: 3,
-  doubleClickEnabled: false,
-
-  nodeHaloColor: '#ffc021',
-  edgeHaloColor: '#f0f061',
-  nodeHaloSize: 6,
-  edgeHaloSize: 2,
-
-  // enableEdgeHovering: true,  // canvas renderer only
-  // edgeHoverPrecision: 5,
-  shortLabelsOnHover: true,    // enable the short label display mode
-  // spriteSheetResolution: 2048, // resolution of the sprite sheet square
-  // spriteSheetMaxSprites: 8     // number max of sprites
-
-  animationsTime: 500,
-};
-
-// init sigma
-let s = new sigma({
-  graph: g,
-  renderer: {
-    container: document.getElementById('graph-container'),
-    type: 'webgl' // 'canvas'
-  },
-  settings: settings
-});
-
 // init design plugin:
 let design = sigma.plugins.design(s, {
   styles: Styles,
   palette: Palette
 });
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Sigma ActiveState plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/Linkurious/linkurious.js/tree/develop/plugins/sigma.plugins.activeState
+// This plugin provides a new state called active to nodes and edges.
 
 // init ActiveState plugin:
 let activeState = sigma.plugins.activeState(s);
@@ -274,17 +397,25 @@ let activeStateNodeEdges = function (node) {
     activeState.addEdges(s.graph.adjacentEdges(node.id).map(i => i.id));
 };
 
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Sigma Locate plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/Linkurious/linkurious.js/tree/develop/plugins/sigma.plugins.locate
+// Locate nodes and edges in the visualization by animating the camera to fit the specified elements on screen.
+
 // init locate plugin:
 let locate_settings = {
   animation: {
     node: {
-      duration: 800
+      duration: 1200
     },
     edge: {
-      duration: 300
+      duration: 800
     },
     center: {
-      duration: 800
+      duration: 1200
     }
   },
   // PADDING:
@@ -301,12 +432,11 @@ let locate_settings = {
 
 let locate = sigma.plugins.locate(s, locate_settings);
 
-function locateNode (nid) {
-  if (nid == '') {
+function locateNode (node_id) {
+  if (node_id == '') {
     locate.center(1);
-  }
-  else {
-    locate.nodes(nid);
+  } else {
+    locate.nodes(node_id);
   }
 }
 
@@ -314,66 +444,13 @@ function neighbours (node) {
   return s.graph.adjacentNodes(node.id);
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
 
-/**
- * DB functions
-  */
-function getData(query, API_endpoint) {
-  return new Promise( function (resolve, reject) {
-    try {
-      resolve(fetchJs(query, API_endpoint));
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
-
-async function fetchJs(query, API_endpoint) {
-  const URL = API_endpoint + query;
-  const response = await fetch(URL);
-  const result = await response.json();
-  return await result;
-}
-
-function updateGraph_(s, node) {
-  // Calls API to return neighbouring nodes and edges, then updates graph.
-  let update = {
-    nodes: [],
-    edges: []
-  };
-
-  // Wait until getNodes and getEdges complete
-  Promise.all([
-    getData(node.id, API_endpoint).then(values => {
-      update = values;
-    })
-  ]).then(values => {
-    console.log(update);
-    // then update graph
-    s.graph.updateSkipDuplicateNodes(update);
-    // re-apply design
-    design.deprecate();
-    design.apply();
-    }).then(()=>{
-      // apply activeState to node and connected edges
-    activeStateNodeEdges(node);
-    }).then(()=>{
-    // refresh graph
-    s.refresh();
-    // update filters pane
-    updatePane(s.graph, filter);
-  }).then(() => {
-    let neighbours = s.graph.adjacentNodes(node.id);
-    // pan camera to neighbourhood location
-    // if() to avoid zooming straight in when no neighbours which disorients.
-    if (neighbours.length > 1) {locate.nodes(neighbours.map(n => n.id));}
-        // add halo to new nodes
-    s.renderers[0].halo({nodes: update.nodes, edges: []});
-
-  });
-}
-
-
+//region Filter Pane
+//----------------------------------------------------------------------------------------------------------------------
+// Updates the filter pane when new items are loaded to graph
+//
 /**
  * Filter pane
   */
@@ -413,7 +490,7 @@ function updatePane (graph, filter) {
   _.$('min-year-val').textContent = minYear;
   _.$('min-year').max = maxYear;
   _.$('max-year-val').textContent = maxYear;
-  if (_.$('min-year').value == 0) {
+  if (_.$('min-year').value === 0) {
     _.$('min-year').value = minYear;
   }
   _.$('year-val').textContent = _.$('min-year').value;
@@ -442,9 +519,17 @@ function updatePane (graph, filter) {
   });
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Sigma Filter plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/Linkurious/linkurious.js/tree/develop/plugins/sigma.plugins.filter
+// filter nodes and edges by predicate, chain filters, undo and redo
+
 // Initialize the Filter API
 filter = sigma.plugins.filter(s);
-
+// link with filter control pane
 updatePane(s.graph, filter);
 
 function applyMinDegreeFilter(e) {
@@ -506,16 +591,14 @@ function applyHideEdgesFilter(e) {
   } else {
     filter.undo('hide-edges').apply();
   }
-
 }
 
-// Return array of unique values
-// see: https://stackoverflow.com/questions/1960473
-function arrayUnique(array) {
-  return [...new Set(array)];
-}
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
 
-// Details pane
+//region Details pane
+//----------------------------------------------------------------------------------------------------------------------
+// Displays node details in details pane, add's buttons (crumbs) for clicked nodes
 
 // Create <div> with node details
 function addDiv(node) {
@@ -537,7 +620,6 @@ function addDiv(node) {
   </p>
   <p><b>Abstract:</b> ${node.abstract}</p>
   `;
-  // Note - not checking typeof node.citations !== 'undefined' will error, same for refs - fix in js framework?
   _.$('details').appendChild(div);
 }
 
@@ -556,8 +638,24 @@ function addPrevNodeButton(node) {
     addDiv(node);
   };
   el.appendChild(button);
-
 }
+
+// Bind hover event to adding details div - see also halo below
+s.bind('hovers', function(e) {
+  if (e.data.enter.nodes.length > 0) {
+    addDiv(e.data.enter.nodes[0]);
+  }
+  renderHaloAdjacent(e.data.enter.nodes);
+});
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Sigma Halo plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/Linkurious/linkurious.js/tree/develop/plugins/sigma.renderers.halo
+// This plugin provides a method to render a halo behind nodes and edges.
+// This is bound to 'hover' event - see Details region
 
 // Halo
 function renderHalo(nodes, edges=[]) {
@@ -567,27 +665,16 @@ function renderHalo(nodes, edges=[]) {
   });
 }
 
-s.bind('hovers', function(e) {
-  // console.log(e.data.captor, e.data);
-  if (e.data.enter.nodes.length > 0) {
-    // _.$('details-text').textContent = JSON.stringify(e.data.enter.nodes[0]);
-    addDiv(e.data.enter.nodes[0]);
-  }
-  renderHaloAdjacent(e.data.enter.nodes);
-});
-
-
-let renderHaloAdjacent = function (nodes) {
-  var adjacentNodes = [],
+function renderHaloAdjacent (nodes) {
+  let adjacentNodes = [],
       adjacentEdges = [];
 
-  if (!nodes.length) return;
+  if (!nodes.length) { return; }
 
 // Get adjacent nodes:
   nodes.forEach(function(node) {
     adjacentNodes = adjacentNodes.concat(s.graph.adjacentNodes(node.id));
   });
-
 // Add hovered nodes to the array and remove duplicates:
   adjacentNodes = arrayUnique(adjacentNodes.concat(nodes));
 
@@ -595,7 +682,6 @@ let renderHaloAdjacent = function (nodes) {
   nodes.forEach(function(node) {
     adjacentEdges = adjacentEdges.concat(s.graph.adjacentEdges(node.id));
   });
-
 // Remove duplicates:
   adjacentEdges = arrayUnique(adjacentEdges);
 
@@ -604,87 +690,41 @@ let renderHaloAdjacent = function (nodes) {
     nodes: adjacentNodes,
     edges: adjacentEdges
   });
-};
+}
 
-
+// bind render event to halo - halo is drawn in another layer, so must be re-rendered if e.g. graph is zoomed
 s.renderers[0].bind('render', function(e) {
   s.renderers[0].halo();
 });
 
-// Configure the ForceLink algorithm:
-var fa = sigma.layouts.configForceLink(s, {
-  edgeWeightInfluence: 1,
-  linLogMode: true, //  emphasize clusters (and outliers)
-  randomize: 'globally',
-  // seems to crash browser if true and randomize not set to globally
-  // (but should speed up large graph layout)
-  barnesHutOptimize: true,
-  barnesHutTheta: 1.2,
-  strongGravityMode: true,
-  worker: true,
-  autoStop: true,
-  avgDistanceThreshold: 0.05,
-  background: true,
-  easing: 'quadraticInOut',
-  duration: 1200,
-});
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
 
-fa.bind('start stop', function (event) {
-  if (event.type === 'stop') {
-    _.$('FL-layout').innerHTML = 'Force';
-  }
-  if (event.type === 'start') {
-    _.$('FL-layout').innerHTML = 'Stop layout';
-  }
-});
+//region Layout
+//----------------------------------------------------------------------------------------------------------------------
+// Layout algorithms.
+// Default layout from server passes x: year and y: rank
+// other layouts calculated in browser.
 
-document.getElementById('FL-layout').addEventListener('click', function() {
-  if ((s.supervisor || {}).running) {
-    sigma.layouts.killForceLink();
-    document.getElementById('FL-layout').innerHTML = 'Force';
-  } else {
-    storeLayoutAsPrevLayout();
-    sigma.layouts.startForceLink({worker: true});
-    document.getElementById('FL-layout').innerHTML = 'Stop layout';
-  }
-});
-
-// Configure the Fruchterman-Reingold algorithm:
-let fr = sigma.layouts.fruchtermanReingold.configure(s, {
-  iterations: 100,
-  easing: 'quadraticInOut',
-  duration: 1200
-});
-
-fr.bind('start stop', function (event) {
-  if (event.type === 'stop') {
-    _.$('FR-layout').innerHTML = 'Spring';
-  }
-  if (event.type === 'start') {
-    _.$('FR-layout').innerHTML = 'Stop layout';
-  }
-});
-
-_.$('FR-layout').addEventListener("click", function(e) {
-  storeLayoutAsPrevLayout();
-  sigma.layouts.fruchtermanReingold.start(s);
-});
-
-let storeLayoutAsPrevLayout = function() {
+// called for newly loaded nodes
+function storeLayoutAsPrevLayout() {
   s.graph.nodes().forEach(function (n) {
     n.x_prev = n.x;
     n.y_prev = n.y;
   });
-};
+}
 
-let loadPrevLayout = function() {
+// todo: needs to test if nodes have a prev location
+function loadPrevLayout() {
   s.graph.nodes().forEach(function (n) {
-    let x = n.x,
-        y = n.y;
-    n.x_new = n.x_prev;
-    n.x_prev = x;
-    n.y_new = n.y_prev;
-    n.y_prev = y;
+
+      let x = n.x,
+          y = n.y;
+      n.x_new = n.x_prev;
+      n.x_prev = x;
+      n.y_new = n.y_prev;
+      n.y_prev = y;
+
   });
   sigma.plugins.animate(
       s,
@@ -698,24 +738,122 @@ let loadPrevLayout = function() {
   );
   // s.refresh();
   // filter.undo().apply();
-};
+}
 // todo: Causes interaction in graph to freeze until e.g. any filter applied.
+// calling s.refresh() from browser, or applying a filter by e.g. clicking any filter control fixes this
+//  but calling from the function above does not
+//  a timing / binding issue?
 _.$("previous-layout").addEventListener("click", loadPrevLayout);
 
-// s.bind('animate.start animate.end', function(event) {
-//   console.log(event.type); // "animate.start"
-//   if(event === "animate.end") {s.refresh()}
-// });
+//region Layout - NOverlap plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/jacomyal/sigma.js/tree/master/plugins/sigma.layout.noverlap
+// Distribute nodes, ensuring they do not overlap
+
+// Configure the noverlap layout:
+var noverlapListener = s.configNoverlap({
+  maxIterations: 300,
+  speed: 2,
+  nodeMargin: 0.5,
+  scaleNodes: 1.5,  // additional margin around larger nodes
+  gridSize: 100,
+  easing: 'quadraticInOut', // animation transition function
+  duration: 3000   // animation duration. Long here for the purposes of this example only
+});
+// run from graph update function
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Layout - ForceLink plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/Linkurious/linkurious.js/tree/develop/plugins/sigma.layouts.forceLink
+// ForceAtlas2 with added functionality. See also:
+// https://github.com/jacomyal/sigma.js/tree/master/plugins/sigma.layout.forceAtlas2
+// Implements and extends ForceAtlas2, a force-directed layout algorithm.
+// Computations are delegated to a web worker.
+// Suitable for larger graphs.
+
+// Configure the ForceLink algorithm:
+var fa = sigma.layouts.configForceLink(s, {
+  edgeWeightInfluence: 1,
+  linLogMode: true, //  emphasize clusters (and outliers)
+  randomize: 'globally',
+  barnesHutOptimize: true,  // seems to crash browser if true and randomize not set to globally
+  barnesHutTheta: 1.2,      // (but should speed up large graph layout)
+  strongGravityMode: true,
+  worker: true,
+  autoStop: true,
+  avgDistanceThreshold: 0.05,
+  background: true,       //  Calculate positions, then update view
+  easing: 'quadraticInOut',
+  duration: 1500,
+});
+
+_.$('FL-layout').addEventListener('click', function() {
+  if ((s.supervisor || {}).running) {
+    sigma.layouts.killForceLink();
+    _.$('FL-layout').innerHTML = 'Force';
+  } else {
+    storeLayoutAsPrevLayout();
+    sigma.layouts.startForceLink({worker: true});
+    _.$('FL-layout').innerHTML = 'Stop layout';
+  }
+});
+
+fa.bind('start stop', function (event) {
+  if (event.type === 'stop') {
+    _.$('FL-layout').innerHTML = 'Force';
+  }
+  if (event.type === 'start') {
+    _.$('FL-layout').innerHTML = 'Stop layout';
+  }
+});
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+
+//region Layout - Fruchterman-Reingold plugin
+//----------------------------------------------------------------------------------------------------------------------
+// https://github.com/Linkurious/linkurious.js/tree/develop/plugins/sigma.layouts.fruchtermanReingold
+// Implements the Fruchterman-Reingold layout, a force-directed layout algorithm.
+// Suitable for smaller graphs
+// number nodes < 1000 seems ok
+// > 1000 nodes - may become impractical
+
+// Configure the Fruchterman-Reingold algorithm:
+let fr = sigma.layouts.fruchtermanReingold.configure(s, {
+  iterations: 100,
+  easing: 'quadraticInOut',
+  duration: 1500
+});
+
+_.$('FR-layout').addEventListener("click", function(e) {
+  storeLayoutAsPrevLayout();
+  sigma.layouts.fruchtermanReingold.start(s);
+});
+
+fr.bind('start stop', function (event) {
+  if (event.type === 'stop') {
+    _.$('FR-layout').innerHTML = 'Spring';
+  }
+  if (event.type === 'start') {
+    _.$('FR-layout').innerHTML = 'Stop layout';
+  }
+});
+
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
+//----------------------------------------------------------------------------------------------------------------------
+//endregion
 
 /**
  * Bind events
   */
 s.bind('clickNode', function(e) {
-  // console.log(e.type, e.data.node.id, e.data.node.label, e.data.captor);
   if (activeState.nodes().includes(e.data.node)) {
     locate.center(locate_settings.zoomDef);
   } else {
-    // TODO: this may call API for node which has previously been called - fix.
     console.log(e.data.node);
     updateGraph_(s, e.data.node);
   }
@@ -739,13 +877,3 @@ API_mode.addEventListener("change", function () {
   API_endpoint = "http://localhost:8000/graph/sigma/paper/" + API_mode.value + "/";
   console.log(API_endpoint);
 });
-
-// s.bind('clickEdge doubleClickEdge rightClickEdge', function(e) {
-//   console.log(e.type, e.data.edge, e.data.captor);
-// });
-// s.bind('clickStage doubleClickStage rightClickStage', function(e) {
-//   console.log(e.type, e.data.captor);
-// });
-// s.bind('hovers', function(e) {
-//   console.log(e.type, e.data.captor, e.data);
-// });
