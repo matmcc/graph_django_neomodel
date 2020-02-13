@@ -6,12 +6,12 @@ def index(request):
 
 
 def vue(request):
-    return render(request, "graph_viz/vue.html")
+    return render(request, "graph_viz/testing_js_frameworks/vue.html")
 
 
 def buefy(request):
-    return render(request, "graph_viz/buefy.html")
+    return render(request, "graph_viz/testing_js_frameworks/buefy.html")
 
 
 def vuetify(request):
-    return render(request, "graph_viz/vuetify.html")
+    return render(request, "graph_viz/testing_js_frameworks/vuetify.html")

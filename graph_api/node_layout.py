@@ -1,13 +1,16 @@
+import os
 import shelve
 from bisect import bisect
 from collections import Counter
 import random
 from datetime import datetime
 
-from graph_api.year_distribution import get_sample, percentiles_of_sample, get_sample_lt
+from graph_api.db.year_distribution import get_sample, percentiles_of_sample, get_sample_lt
 
 # from neomodel import db, config
 # config.DATABASE_URL = 'bolt://neo4j:password@localhost:7687'
+from graph_django_neomodel.settings import BASE_DIR
+
 SAMPLE_SIZE = 100000
 
 
@@ -68,7 +71,7 @@ def build_distribution_dict(distribution_dict, min_v, max_v):
     return return_dict
 
 
-with shelve.open('cached_function_calls', writeback=True) as db:
+with shelve.open(os.path.join(BASE_DIR, 'mag', 'cached_function_calls'), writeback=True) as db:
     if 'percentile_distribution_years' in db:
         percentile_dist_years = db['percentile_distribution_years']
     else:

@@ -1,19 +1,15 @@
-import random
-
 from neomodel import DoesNotExist
-from django.http import JsonResponse, HttpResponse, Http404
-from rest_framework import viewsets, status, mixins, generics
-from rest_framework.decorators import api_view
+from django.http import HttpResponse, Http404
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from decorators import timing
 from .models import Paper, Author, FieldOfStudy
-from .papers_to_cypher import update_papers, get_paper_via_interpret
-from .serializers import (PaperSerializer, AuthorSerializer, FieldOfStudySerializer, AuthorWithPapersSerializer,
+from graph_api.db.papers_to_cypher import update_papers, get_paper_via_interpret
+from .serializers import (PaperSerializer, AuthorWithPapersSerializer,
                           FieldOfStudyWithPapersSerializer, SigmaPaperSerializer)
-from .utils import count_nodes, fetch_nodes, fetch_node_details, get_related_edges_unfiltered, fetch_co_citations, \
+from graph_api.db.utils import fetch_nodes, fetch_node_details, get_related_edges_unfiltered, fetch_co_citations, \
     get_related_edges_filtered, get_related_edges_two_layers, get_edges_pathlength, get_related_edges
 from . import node_layout
 

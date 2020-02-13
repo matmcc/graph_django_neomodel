@@ -1,8 +1,8 @@
 from neomodel import db
 
 from decorators import timing
-from .models import Author, FieldOfStudy, Paper
-from .serializers import AuthorSerializer, FieldOfStudySerializer, PaperSerializer, SigmaPaperSerializer
+from graph_api.models import Author, FieldOfStudy, Paper
+from graph_api.serializers import AuthorSerializer, FieldOfStudySerializer, PaperSerializer, SigmaPaperSerializer
 
 MODELS = {
     'author': Author,
