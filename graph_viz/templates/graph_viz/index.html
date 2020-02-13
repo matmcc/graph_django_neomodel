@@ -26,11 +26,16 @@
           <div id="controls" >
 
             <div class="filter-div">
-              <h3>min degree <span id="degree-val">0</span></h3>
-              <span id="min-degree-val">0</span>
-              <input id="min-degree" type="range" min="0" max="0" value="0" class="filter-range">
-              <span id="max-degree-value">0</span><br>
+              <h3>min rank <span id="rank-val">0</span></h3>
+              <span id="min-rank-val">0</span>
+              <input id="rank-range" type="range" min="0" max="0" value="0" class="filter-range">
+              <span id="max-rank-val">0</span><br>
             </div>
+{#              <h3>min degree <span id="degree-val">0</span></h3>#}
+{#              <span id="min-degree-val">0</span>#}
+{#              <input id="min-degree" type="range" min="0" max="0" value="0" class="filter-range">#}
+{#              <span id="max-degree-value">0</span><br>#}
+{#            </div>#}
 
             <div class="filter-div">
             <h3>min year <span id="year-val">0</span></h3>
@@ -79,7 +84,30 @@
           </div>
 
           <div id="details" >
-            <textarea id="details-text" rows="9" readonly></textarea>
+{#            <textarea id="details-text" rows="9" readonly></textarea>#}
+            <div id="instructions">
+              <h3>Instructions</h3>
+              <p>Clicking a node will select and expand the node.
+                Each node represents a journal article.
+                Each edge (connection) represents a citing relationship -
+                another paper which is referenced, or references this paper.
+                When a node is clicked, a new button appears in this pane which can be used to re-select the node</p>
+              <p>Hovering on a node displays the article details and outlines related nodes and edges
+                (clicking on the halo/highlight does not expand the node - only clicking on the node itself)</p>
+              <p>Additional nodes are loaded when the node is clicked - the <b>expansion mode</b> drop-down changes how nodes are expanded</p>
+              <p><b>"Related"</b> will load all nodes which are referenced, or which cite, the node which is expanded.
+                <b>"Cocitation"</b> will load other papers which share references with the current paper - indicating similarity.</p>
+              <p>There is an example node, or you can <b>search</b> Microsoft Academic (MAG) to load other articles.
+                You could search by title, author, or field of study - results considered most relevant will be returned</p>
+              <p>You can <b>filter</b> nodes by properties in the pane above. Note that for <b>Rank</b>, lower is better</p>
+              <p><b>Layout</b> - when articles are loaded the 'x' position represents time - more recent articles will be on the right.
+                The 'y' position represents rank in MAG - more influential articles will be higher</p>
+              <p><b>Force</b> and <b>Spring</b> offer alternate layouts. Force is better for larger graphs.
+                The <b>'Previous'</b> button returns to the previous layout</p>
+              <p><b>Colour</b> indicates MAG rank, and <b>radius</b> indicates number of citations.
+                You can zoom and pan, and double-click the background to re-centre the layout.</p>
+              <p>If there are too many edges, these can be hidden</p>
+            </div>
           </div>
         </div>
 

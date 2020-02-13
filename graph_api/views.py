@@ -14,7 +14,7 @@ from .papers_to_cypher import update_papers, get_paper_via_interpret
 from .serializers import (PaperSerializer, AuthorSerializer, FieldOfStudySerializer, AuthorWithPapersSerializer,
                           FieldOfStudyWithPapersSerializer, SigmaPaperSerializer)
 from .utils import count_nodes, fetch_nodes, fetch_node_details, get_related_edges_unfiltered, fetch_co_citations, \
-    get_related_edges_filtered, get_related_edges_two_layers
+    get_related_edges_filtered, get_related_edges_two_layers, get_edges_pathlength, get_related_edges
 from . import node_layout
 
 
@@ -122,14 +122,19 @@ def get_node_coords(nodes):
 
 
 @timing
-def get_edges(node_id, session_key, method="unfiltered", weight="Rank"):
+def get_edges(node_id, session_key, method="edges", weight="Rank", path_length=1):
     edges = []
-    if method == "filtered":
+    if method == "edges":
+        all_edges = get_related_edges(node_id, weight)
+    elif method == "filtered":
         all_edges = get_related_edges_filtered(node_id, weight)
     elif method == "unfiltered":
         all_edges = get_related_edges_unfiltered(node_id, weight)
     elif method == "two_layers":
         all_edges = get_related_edges_two_layers(node_id, weight)
+        print(len(all_edges))
+    elif method == "pathlength":
+        all_edges = get_edges_pathlength(node_id, weight, path_length)
         print(len(all_edges))
     else:
         raise NotImplementedError
@@ -178,7 +183,7 @@ class SigmaPaperRelated(APIView):
             SENT_TO_VIZ.add(n['id'])
 
         nodes = get_node_coords(nodes)
-        edges = get_edges(paper.PaperId, SENT_TO_VIZ)
+        edges = get_edges(paper.PaperId, SENT_TO_VIZ, method="edges")
 
         json_for_sigma = {
             'nodes': nodes,
@@ -292,7 +297,7 @@ class SigmaPaperCoCited(APIView):
             SENT_TO_VIZ.add(n['id'])
 
         nodes = get_node_coords(nodes)
-        edges = get_edges(paper.PaperId, SENT_TO_VIZ, method="two_layers")
+        edges = get_edges(paper.PaperId, SENT_TO_VIZ, method="pathlength", weight="Rank", path_length=2)
 
         print(request.session)
         json_for_sigma = {

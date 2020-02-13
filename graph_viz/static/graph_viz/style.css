@@ -43,11 +43,9 @@ body {
     /*display: flex;*/
     /*flex: 1;*/
 }
-#details > textarea {
-    height: 90%;
-    width: 90%;
-    /*margin: auto;*/
-    resize: none;
+#instructions {
+    /*margin: 40px;*/
+    padding: 20px;
 }
 #control-pane {
     flex: 1;
@@ -71,6 +69,9 @@ body {
     min-width: 475px;
     padding: 5px 10px;
 }
+#rank-range {
+    direction: rtl;
+}
 /*input[type=range] {*/
 /*  width: 50%;*/
 /*}*/
@@ -82,6 +83,9 @@ body {
 #controls-toggles > div {
     padding: 5px 10px;
     flex-grow: 1;
+}
+#MAGsearch {
+    margin-left: 10px;
 }
 .line {
   clear: both;

@@ -150,20 +150,7 @@ def check_node_property_exists(node_type, node_prop):
     return results
 
 
-def get_nbrs_for_mag(node_id):
-    """Return neighbours of node_id without name property. Returns list of ids"""
-    q = "MATCH (n:Paper {Id:{node_id})-[:CITES]-(p) WHERE NOT EXISTS(p.name) RETURN p.Id"
-    results, meta = db.cypher_query(q, {'node_id': node_id})
-    return results
-
-
-def get_nbrs_for_mag_list(list_of_node_ids):
-    """For list of node ids, return neighbours without name property. Returns list of ids"""
-    q = "MATCH (n:Paper)-[:CITES]-(o:Paper) WHERE n.Id in {node_ids} AND NOT EXISTS(o.name) return o.Id"
-    results, meta = db.cypher_query(q, {'node_ids': list_of_node_ids})
-    return results
-
-
+@timing
 def get_related_edges_filtered(node_id, weight=None):
     """Returns list of edges between neighbour nodes linked to node_id
         edge will have weight if included, where weight is a property of the target node
@@ -183,6 +170,7 @@ def get_related_edges_filtered(node_id, weight=None):
     return results
 
 
+@timing
 def get_related_edges_unfiltered(node_id, weight=None):
     """Returns list of edges from neighbour nodes of node_id: [edge_id, source_node_id, end_node_id]
     May include nodes not yet fetched from DB
@@ -203,6 +191,28 @@ def get_related_edges_unfiltered(node_id, weight=None):
     return results
 
 
+@timing
+def get_related_edges(node_id, weight=None):
+    """Returns list of edges from neighbour nodes of node_id: [edge_id, source_node_id, end_node_id]
+    May include nodes not yet fetched from DB
+    edge will have weight if included, where weight is a property of the target node
+    list format: [edge_id, source_node_id, target_node_id, weight]"""
+    q = """
+    MATCH (s:Paper {PaperId:{node_id}})-[c1:CITES*0..1]-(t:Paper)
+    MATCH (t)-[c2:CITES]-(u:Paper)
+    WITH distinct (c1 + c2) as c
+    UNWIND c as cites
+    RETURN ID(cites), startNode(cites).PaperId, endNode(cites).PaperId
+    """
+    params = {'node_id': node_id}
+    if weight:
+        q += f", endNode(cites).{weight}"
+    results, meta = db.cypher_query(q, params)
+    return results
+
+
+
+@timing
 def get_related_edges_two_layers(node_id, weight=None):
     """Returns list of edges between neighbour nodes linked to node_id
         edge will have weight if included, where weight is a property of the target node
@@ -218,6 +228,19 @@ def get_related_edges_two_layers(node_id, weight=None):
     params = {'node_id': node_id}
     if weight:
         q += f", endNode(cites).{weight}"
+    results, meta = db.cypher_query(q, params)
+    return results
+
+
+@timing
+def get_edges_pathlength(node_id, weight=None, path_length=1):
+    """Get all edges in paths length 0 - 2 from node"""
+    q = "MATCH (s:Paper {PaperId:{node_id}})-" + f"[c:CITES*0..{path_length}]-(t:Paper) "
+    q += "WITH distinct c UNWIND c as cites "
+    q += "RETURN ID(cites), startNode(cites).PaperId, endNode(cites).PaperId"
+    if weight:
+        q += f", endNode(cites).{weight}"
+    params = {'node_id': node_id}
     results, meta = db.cypher_query(q, params)
     return results
 

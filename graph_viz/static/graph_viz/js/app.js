@@ -281,7 +281,7 @@ function updateGraph_(s, node) {
     // update filters pane
     updatePane(s.graph, filter);
   }).then(() => {
-    s.startNoverlap();
+    // s.startNoverlap();
     let neighbours = s.graph.adjacentNodes(node.id);
     // pan camera to neighbourhood location
     // if() to avoid zooming straight in when no neighbours which disorients.
@@ -293,7 +293,7 @@ function updateGraph_(s, node) {
   //   n.x_prev = n.x;
   //   n.y_prev = n.y;
   // });
-    // storeLayoutAsPrevLayout(neighbours);
+  //   storeLayoutAsPrevLayout(neighbours);
   });
 }
 
@@ -460,7 +460,9 @@ function updatePane (graph, filter) {
       minYear = 3000,
       maxYear = 0,
       maxCit = 0,
-      maxRef = 0;
+      maxRef = 0,
+      minRank = 50000,
+      maxRank = 0;
 
   // read nodes
   graph.nodes().forEach(function(n) {
@@ -468,6 +470,10 @@ function updatePane (graph, filter) {
     if (typeof n.year !== "undefined") {
       minYear = Math.min(minYear, n.year);
       maxYear = Math.max(maxYear, n.year);
+    }
+    if (typeof n.rank !== "undefined") {
+      minRank = Math.min(minRank, n.rank);
+      maxRank = Math.max(maxRank, n.rank);
     }
     if (typeof n.rc !== "undefined") {
       maxRef = Math.max(maxRef, n.rc);
@@ -478,8 +484,12 @@ function updatePane (graph, filter) {
   });
 
   // min degree
-  _.$('min-degree').max = maxDegree;
-  _.$('max-degree-value').textContent = maxDegree;
+  _.$('rank-range').min = minRank;
+  _.$('min-rank-val').textContent = maxRank;
+  _.$('rank-val').textContent = _.$('rank-range').value;
+  _.$('max-rank-val').textContent = minRank;
+  _.$('rank-range').max = maxRank;
+  // _.$('max-degree-value').textContent = maxRank;
   _.$('min-refs').max = maxRef;
   _.$('max-refs-val').textContent = maxRef;
   _.$('min-cits').max = maxCit;
@@ -519,6 +529,19 @@ function updatePane (graph, filter) {
   });
 }
 
+// TODO: These are not bound together - therefore one does not update as another is used - intended?
+_.$('rank-range').addEventListener("input", applyMinDegreeFilter);
+_.$('min-year').addEventListener("input", applyMinYearFilter);
+_.$('min-refs').addEventListener("input", applyMinRefsFilter);
+_.$('min-cits').addEventListener("input", applyMinCitsFilter);
+_.$('hide_edges').addEventListener("change", applyHideEdgesFilter);
+
+let API_mode = _.$('expansion-mode');
+API_mode.addEventListener("change", function () {
+  API_endpoint = "http://localhost:8000/graph/sigma/paper/" + API_mode.value + "/";
+  console.log(API_endpoint);
+});
+
 //----------------------------------------------------------------------------------------------------------------------
 //endregion
 
@@ -532,15 +555,27 @@ filter = sigma.plugins.filter(s);
 // link with filter control pane
 updatePane(s.graph, filter);
 
+// function applyMinDegreeFilter(e) {
+//   let v = e.target.value;
+//   _.$('min-degree-val').textContent = v;
+//
+//   filter.undo('min-degree')
+//           .nodesBy(function(n, options) {
+//                     return this.graph.degree(n.id) >= options.minDegreeVal;
+//                   },
+//                   { minDegreeVal: +v }, 'min-degree' )
+//           .apply();
+// }
+
 function applyMinDegreeFilter(e) {
   let v = e.target.value;
-  _.$('min-degree-val').textContent = v;
+  _.$('rank-val').textContent = v;
 
-  filter.undo('min-degree')
+  filter.undo('filter-rank')
           .nodesBy(function(n, options) {
-                    return this.graph.degree(n.id) >= options.minDegreeVal;
+                    return n.rank <= options.rankVal;
                   },
-                  { minDegreeVal: +v }, 'min-degree' )
+                  { rankVal: +v }, 'filter-rank' )
           .apply();
 }
 
@@ -863,17 +898,4 @@ s.bind('clickNode', function(e) {
 
 s.bind('doubleClickStage', function() {
   locate.center(locate_settings.zoomDef);
-});
-
-// TODO: These are not bound together - therefore one does not update as another is used - intended?
-_.$('min-degree').addEventListener("input", applyMinDegreeFilter);
-_.$('min-year').addEventListener("input", applyMinYearFilter);
-_.$('min-refs').addEventListener("input", applyMinRefsFilter);
-_.$('min-cits').addEventListener("input", applyMinCitsFilter);
-_.$('hide_edges').addEventListener("change", applyHideEdgesFilter);
-
-let API_mode = _.$('expansion-mode');
-API_mode.addEventListener("change", function () {
-  API_endpoint = "http://localhost:8000/graph/sigma/paper/" + API_mode.value + "/";
-  console.log(API_endpoint);
 });
